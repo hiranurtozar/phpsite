@@ -5,8 +5,13 @@ ob_start();
 $kategori = $_GET['kategori'] ?? 'tumu';
 $arama = $_GET['arama'] ?? '';
 
-// Ürünleri getir (cicek.php'deki fonksiyonu kullan)
-$urunler = urunleriGetir($kategori);
+// TÜM ürünleri getir (cicek.php'deki fonksiyonu kullan)
+// NOT: urunleriGetir fonksiyonu varsayılan olarak tüm ürünleri döndürecek
+$tum_urunler = urunleriGetir($kategori);
+
+// Eğer kategori "tumu" ise tüm ürünleri göster
+// Eğer belirli bir kategori ise sadece o kategoriye ait ürünleri göster
+$urunler = $tum_urunler;
 
 // Arama filtresi
 if($arama) {

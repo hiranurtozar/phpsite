@@ -113,31 +113,30 @@ require_once 'header.php';
         to { transform: translateX(0); }
     }
     
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-    
     @keyframes bounce {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-10px); }
     }
     
-    /* YENİ: Öne Çıkan Ürünler */
-    .featured-products {
+    /* ÖNE ÇIKANLAR Bölümü - YENİ TASARIM */
+    .featured-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 60px 20px;
+        border-radius: 20px;
         margin: 60px 0;
+        text-align: center;
     }
     
-    .featured-products h2 {
-        text-align: center;
-        font-size: 2.2rem;
-        margin-bottom: 40px;
+    .section-title {
+        font-size: 2.5rem;
+        color: #333;
+        margin-bottom: 15px;
         position: relative;
+        display: inline-block;
         padding-bottom: 15px;
     }
     
-    .featured-products h2::after {
+    .section-title::after {
         content: '';
         position: absolute;
         bottom: 0;
@@ -145,73 +144,75 @@ require_once 'header.php';
         transform: translateX(-50%);
         width: 100px;
         height: 3px;
-        background: linear-gradient(to right, #667eea, #764ba2);
+        background: linear-gradient(to right, #ff6b9d, #764ba2);
         border-radius: 2px;
     }
     
-    .products-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 30px;
-        margin-bottom: 40px;
+    .section-subtitle {
+        color: #666;
+        max-width: 600px;
+        margin: 0 auto 40px;
+        font-size: 1.1rem;
+        line-height: 1.6;
     }
     
-    .product-card {
-        background: white;
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-        animation: fadeIn 0.6s ease-out;
-    }
-    
-    .product-card:hover {
-        transform: translateY(-10px) scale(1.02);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-    }
-    
-    .product-image {
-        height: 200px;
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    .featured-products-simple {
         display: flex;
+        justify-content: center;
+        gap: 30px;
+        flex-wrap: wrap;
+        margin: 30px 0 40px;
+    }
+    
+    .featured-product-item {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        min-width: 250px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-size: 4rem;
     }
     
-    .product-info {
-        padding: 20px;
+    .featured-product-item:hover {
+        transform: translateY(-10px) scale(1.05);
+        box-shadow: 0 20px 35px rgba(0,0,0,0.12);
     }
     
-    .product-title {
+    .featured-product-icon {
+        font-size: 3.5rem;
+        margin-bottom: 15px;
+        animation: pulse 2s infinite;
+    }
+    
+    .featured-product-name {
         font-size: 1.3rem;
         font-weight: bold;
-        margin-bottom: 10px;
         color: #333;
+        text-align: center;
+        margin-bottom: 10px;
     }
     
-    .product-description {
-        color: #666;
-        margin-bottom: 15px;
-        line-height: 1.5;
-        font-size: 0.95rem;
-    }
-    
-    .product-price {
+    .featured-product-price {
         font-size: 1.5rem;
         font-weight: bold;
-        color: #667eea;
-        margin-bottom: 15px;
+        color: #ff6b9d;
+        margin-bottom: 20px;
     }
     
-    .product-actions {
+    /* Sepete Ekle ve Hızlı Al Butonları */
+    .product-action-buttons {
         display: flex;
         gap: 10px;
+        width: 100%;
     }
     
-    .btn-cart {
+    .btn-add-to-cart {
         flex: 1;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
         color: white;
         border: none;
         padding: 12px;
@@ -219,30 +220,44 @@ require_once 'header.php';
         cursor: pointer;
         font-weight: bold;
         transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.95rem;
     }
     
-    .btn-cart:hover {
+    .btn-add-to-cart:hover {
         opacity: 0.9;
         transform: translateY(-2px);
     }
     
-    .btn-favorite {
-        background: #ff4757;
+    .btn-quick-buy {
+        flex: 1;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
         color: white;
         border: none;
-        width: 45px;
+        padding: 12px;
         border-radius: 8px;
         cursor: pointer;
+        font-weight: bold;
         transition: all 0.3s;
-        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.95rem;
+        text-decoration: none;
     }
     
-    .btn-favorite:hover {
-        background: #ff6b81;
-        transform: scale(1.1);
+    .btn-quick-buy:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+        color: white;
+        text-decoration: none;
     }
     
-    /* YENİ: Yorumlar Bölümü */
+    /* Yorumlar Bölümü */
     .comments-section {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         padding: 60px 20px;
@@ -413,7 +428,7 @@ require_once 'header.php';
         box-shadow: 0 5px 15px rgba(0,0,0,0.05);
     }
     
-    /* YENİ: Özellikler Bölümü */
+    /* Özellikler Bölümü */
     .features {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -441,6 +456,12 @@ require_once 'header.php';
         animation: bounce 2s infinite;
     }
     
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
         .hosgeldin h1 {
@@ -451,8 +472,22 @@ require_once 'header.php';
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         }
         
-        .products-grid {
-            grid-template-columns: 1fr;
+        .section-title {
+            font-size: 2rem;
+        }
+        
+        .featured-products-simple {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .featured-product-item {
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .product-action-buttons {
+            flex-direction: column;
         }
     }
 </style>
@@ -506,66 +541,66 @@ require_once 'header.php';
         </div>
     </section>
 
-    <!-- YENİ: Öne Çıkan Ürünler -->
-    <?php
-    // Ürünleri yükle
-    $urunler_dosya = 'urunler.json';
-    if(file_exists($urunler_dosya)) {
-        $urunler = json_decode(file_get_contents($urunler_dosya), true);
-        $featured_products = array_slice($urunler, 0, 4);
+    <!-- ÖNE ÇIKAN ÜRÜNLER (YENİ TASARIM) -->
+    <section class="featured-section">
+        <h2 class="section-title"><?php echo $dil == 'tr' ? 'ÖNE ÇIKANLAR' : 'FEATURED PRODUCTS'; ?></h2>
+        <p class="section-subtitle"><?php echo $dil == 'tr' ? 'En çok tercih edilen özel çiçeklerimiz' : 'Our most preferred special flowers'; ?></p>
         
-        if(count($featured_products) > 0):
-    ?>
-    <section class="featured-products">
-        <h2><?php echo $dil == 'tr' ? 'Öne Çıkan Ürünler' : 'Featured Products'; ?></h2>
-        
-        <div class="products-grid">
-            <?php foreach($featured_products as $urun): 
-                // Ürün adını ve açıklamayı dile göre al
-                $urun_ad = ($dil == 'tr') ? ($urun['tr_ad'] ?? $urun['ad'] ?? 'Ürün') : ($urun['en_ad'] ?? $urun['ad'] ?? 'Product');
-                $urun_aciklama = ($dil == 'tr') ? ($urun['tr_aciklama'] ?? $urun['aciklama'] ?? '') : ($urun['en_aciklama'] ?? $urun['aciklama'] ?? '');
-                $kategori_ikon = '';
-                
-                switch($urun['kategori']) {
-                    case 'gul': $kategori_ikon = '🌹'; break;
-                    case 'orkide': $kategori_ikon = '💮'; break;
-                    case 'lale': $kategori_ikon = '🌷'; break;
-                    case 'buket': $kategori_ikon = '💐'; break;
-                    case 'sukulent': $kategori_ikon = '🌵'; break;
-                    default: $kategori_ikon = '🌸';
-                }
-            ?>
-            <div class="product-card">
-                <div class="product-image">
-                    <?php echo $kategori_ikon; ?>
-                </div>
-                <div class="product-info">
-                    <h3 class="product-title"><?php echo htmlspecialchars($urun_ad); ?></h3>
-                    <p class="product-description"><?php echo htmlspecialchars($urun_aciklama); ?></p>
-                    <div class="product-price"><?php echo number_format($urun['fiyat'], 2); ?> ₺</div>
-                    <div class="product-actions">
-                        <button class="btn-cart" onclick="addToCart(<?php echo $urun['id']; ?>)">
-                            <?php echo $dil == 'tr' ? 'Sepete Ekle' : 'Add to Cart'; ?>
-                        </button>
-                        <button class="btn-favorite" onclick="addToFavorites(<?php echo $urun['id']; ?>)">❤️</button>
-                    </div>
+        <div class="featured-products-simple">
+            <!-- Renk Karışık Lale Demeti -->
+            <div class="featured-product-item" data-product-id="1" data-price="199.99">
+                <div class="featured-product-icon">🌷</div>
+                <h3 class="featured-product-name"><?php echo $dil == 'tr' ? 'Renk Karışık Lale Demeti' : 'Mixed Color Tulip Bouquet'; ?></h3>
+                <div class="featured-product-price">199,99 ₺</div>
+                <div class="product-action-buttons">
+                    <button class="btn-add-to-cart" onclick="addToCart(1)">
+                        🛒 <?php echo $dil == 'tr' ? 'Sepete Ekle' : 'Add to Cart'; ?>
+                    </button>
+                    <a href="#" class="btn-quick-buy" onclick="quickBuy(1, event)">
+                        ⚡ <?php echo $dil == 'tr' ? 'Hızlı Al' : 'Quick Buy'; ?>
+                    </a>
                 </div>
             </div>
-            <?php endforeach; ?>
+            
+            <!-- Aşk Buketi -->
+            <div class="featured-product-item" data-product-id="4" data-price="249.99">
+                <div class="featured-product-icon">💝</div>
+                <h3 class="featured-product-name"><?php echo $dil == 'tr' ? 'Aşk Buketi' : 'Love Bouquet'; ?></h3>
+                <div class="featured-product-price">249,99 ₺</div>
+                <div class="product-action-buttons">
+                    <button class="btn-add-to-cart" onclick="addToCart(4)">
+                        🛒 <?php echo $dil == 'tr' ? 'Sepete Ekle' : 'Add to Cart'; ?>
+                    </button>
+                    <a href="#" class="btn-quick-buy" onclick="quickBuy(4, event)">
+                        ⚡ <?php echo $dil == 'tr' ? 'Hızlı Al' : 'Quick Buy'; ?>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Karışık Gül Buketi -->
+            <div class="featured-product-item" data-product-id="1" data-price="299.99">
+                <div class="featured-product-icon">🌹</div>
+                <h3 class="featured-product-name"><?php echo $dil == 'tr' ? 'Karışık Gül Buketi' : 'Mixed Rose Bouquet'; ?></h3>
+                <div class="featured-product-price">299,99 ₺</div>
+                <div class="product-action-buttons">
+                    <button class="btn-add-to-cart" onclick="addToCart(1)">
+                        🛒 <?php echo $dil == 'tr' ? 'Sepete Ekle' : 'Add to Cart'; ?>
+                    </button>
+                    <a href="#" class="btn-quick-buy" onclick="quickBuy(1, event)">
+                        ⚡ <?php echo $dil == 'tr' ? 'Hızlı Al' : 'Quick Buy'; ?>
+                    </a>
+                </div>
+            </div>
         </div>
         
-        <div style="text-align: center;">
-            <a href="urunler.php?sayfa=urunler" class="kategori-buton" style="font-size: 1.1rem; padding: 15px 40px;">
-                <?php echo $dil == 'tr' ? 'Tüm Ürünleri Gör' : 'View All Products'; ?> →
-            </a>
-        </div>
+        <p style="color: #666; max-width: 600px; margin: 20px auto 0;">
+            <?php echo $dil == 'tr' 
+                ? 'Bu özel ürünlerimizi keşfedin ve sevdiklerinize unutulmaz bir sürpriz yapın!' 
+                : 'Discover these special products and surprise your loved ones with an unforgettable gift!'; ?>
+        </p>
     </section>
-    <?php 
-        endif;
-    }
-    ?>
 
-    <!-- YENİ: Özellikler -->
+    <!-- Özellikler -->
     <section class="features">
         <div class="feature-card">
             <div class="feature-icon">🚚</div>
@@ -592,7 +627,7 @@ require_once 'header.php';
         </div>
     </section>
 
-    <!-- YENİ: Yorumlar Bölümü -->
+    <!-- Yorumlar Bölümü -->
     <section class="comments-section">
         <div class="comments-header">
             <h2><?php echo $dil == 'tr' ? 'Müşteri Yorumları' : 'Customer Reviews'; ?></h2>
@@ -635,7 +670,7 @@ require_once 'header.php';
         <?php else: ?>
         <div class="login-prompt">
             <p><?php echo $dil == 'tr' ? 'Yorum yapmak için giriş yapın' : 'Please login to add a review'; ?></p>
-            <a href="#" onclick="acModal(); return false;" class="kategori-buton">
+            <a href="#" onclick="acModal(); acModalTab('giris'); return false;" class="kategori-buton">
                 <?php echo $dil == 'tr' ? 'Giriş Yap' : 'Login'; ?>
             </a>
         </div>
@@ -644,30 +679,82 @@ require_once 'header.php';
 </div>
 
 <script>
-// Sepete ekle
+// Sepete ekle fonksiyonu
 function addToCart(productId) {
+    if(!<?php echo kullaniciGirisKontrol() ? 'true' : 'false'; ?>) {
+        showNotification('<?php echo $dil == "tr" ? "Sepete ürün eklemek için giriş yapmalısınız!" : "You must login to add items to cart!"; ?>', 'warning');
+        acModal();
+        acModalTab('giris');
+        return;
+    }
+    
     fetch('sepet.php?action=add&id=' + productId)
         .then(response => response.json())
         .then(data => {
             if(data.success) {
                 showNotification('<?php echo $dil == "tr" ? "Ürün sepete eklendi!" : "Product added to cart!"; ?>', 'success');
-                // Sepet sayacını güncelle
-                const counter = document.querySelector('.sepet-sayaci');
-                if(counter) {
-                    counter.textContent = parseInt(counter.textContent || 0) + 1;
-                }
+                updateCartCount();
+            } else {
+                showNotification(data.message || '<?php echo $dil == "tr" ? "Bir hata oluştu!" : "An error occurred!"; ?>', 'error');
             }
+        })
+        .catch(error => {
+            showNotification('<?php echo $dil == "tr" ? "Bir hata oluştu!" : "An error occurred!"; ?>', 'error');
+            console.error('Sepete ekleme hatası:', error);
         });
 }
 
-// Favorilere ekle
-function addToFavorites(productId) {
-    fetch('favoriler.php?action=add&id=' + productId)
+// Sepet sayacını güncelle
+function updateCartCount() {
+    const counter = document.querySelector('.sepet-sayaci');
+    if(counter) {
+        let count = parseInt(counter.textContent || 0);
+        counter.textContent = count + 1;
+        counter.classList.add('animated-bounce');
+        setTimeout(() => {
+            counter.classList.remove('animated-bounce');
+        }, 1000);
+    } else {
+        // Sepet sayacı yoksa oluştur
+        const sepetIkonu = document.querySelector('.sepet-ikonu');
+        if(sepetIkonu) {
+            const newCounter = document.createElement('span');
+            newCounter.className = 'sepet-sayaci animated-bounce';
+            newCounter.textContent = '1';
+            sepetIkonu.appendChild(newCounter);
+        }
+    }
+}
+
+// Hızlı Al fonksiyonu
+function quickBuy(productId, event) {
+    event.preventDefault();
+    
+    if(!<?php echo kullaniciGirisKontrol() ? 'true' : 'false'; ?>) {
+        showNotification('<?php echo $dil == "tr" ? "Hızlı alışveriş için giriş yapmalısınız!" : "You must login for quick buy!"; ?>', 'warning');
+        acModal();
+        acModalTab('giris');
+        return;
+    }
+    
+    // Ürünü sepete ekle
+    fetch('sepet.php?action=add&id=' + productId)
         .then(response => response.json())
         .then(data => {
             if(data.success) {
-                showNotification('<?php echo $dil == "tr" ? "Favorilere eklendi!" : "Added to favorites!"; ?>', 'success');
+                showNotification('<?php echo $dil == "tr" ? "Ürün sepete eklendi, ödeme sayfasına yönlendiriliyorsunuz!" : "Product added to cart, redirecting to payment!"; ?>', 'success');
+                
+                // Ödeme sayfasına yönlendir
+                setTimeout(() => {
+                    window.location.href = 'odeme.php?sayfa=odeme';
+                }, 1000);
+            } else {
+                showNotification(data.message || '<?php echo $dil == "tr" ? "Bir hata oluştu!" : "An error occurred!"; ?>', 'error');
             }
+        })
+        .catch(error => {
+            showNotification('<?php echo $dil == "tr" ? "Bir hata oluştu!" : "An error occurred!"; ?>', 'error');
+            console.error('Hızlı al hatası:', error);
         });
 }
 
@@ -688,7 +775,7 @@ document.querySelectorAll('.rating-stars .star').forEach(star => {
     });
 });
 
-// Yorumları yükle
+// Yorumları yükle - HERKESE GÖSTER
 function loadComments() {
     fetch('comments_handler.php?action=get&urun_id=anasayfa')
         .then(response => response.json())
@@ -735,7 +822,7 @@ function loadComments() {
         });
 }
 
-// Yorum gönder
+// Yorum gönder - SADECE GİRİŞ YAPMIŞ KULLANICILAR
 function submitComment(event, urunId = 'anasayfa') {
     event.preventDefault();
     
@@ -772,7 +859,6 @@ function submitComment(event, urunId = 'anasayfa') {
 
 // Bildirim göster
 function showNotification(message, type = 'info') {
-    // Toast mesajı göster (header.php'deki toast sistemini kullan)
     const toastContainer = document.querySelector('.toast-container') || (() => {
         const div = document.createElement('div');
         div.className = 'toast-container';
@@ -798,7 +884,7 @@ function showNotification(message, type = 'info') {
 
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', function() {
-    // Yorumları yükle
+    // Yorumları yükle (HERKESE GÖSTER)
     loadComments();
     
     // İlk yıldızları aktif et

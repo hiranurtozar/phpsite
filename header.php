@@ -1031,7 +1031,7 @@ if(!file_exists($yorumlar_dosya)) {
         window.location.href = window.location.pathname + "?dil=" + dil;
     }
     
-    // TEMA DEĞİŞTİR
+    // TEMA DEĞİŞTİR - ORİJİNAL HALİ
     function temaDegistir() {
         const html = document.documentElement;
         const tema = html.getAttribute('data-theme');
@@ -1043,6 +1043,14 @@ if(!file_exists($yorumlar_dosya)) {
         if(temaBtn) {
             temaBtn.innerHTML = yeniTema === 'light' ? '🌙' : '☀️';
         }
+        
+        // Bildirim göster
+        showNotification(
+            yeniTema === 'dark' 
+                ? '<?php echo $dil == "tr" ? "Koyu tema aktif!" : "Dark theme activated!"; ?> 🌙' 
+                : '<?php echo $dil == "tr" ? "Aydınlık tema aktif!" : "Light theme activated!"; ?> ☀️',
+            'success'
+        );
     }
     
     // ARAMA DOĞRULAMA
@@ -1369,6 +1377,13 @@ if(!file_exists($yorumlar_dosya)) {
                 acModalTab(tabName);
             });
         });
+        
+        // Tema butonu için ikonu ayarla
+        const temaBtn = document.querySelector('.tema-degistirici');
+        if(temaBtn) {
+            const tema = document.documentElement.getAttribute('data-theme');
+            temaBtn.innerHTML = tema === 'light' ? '🌙' : '☀️';
+        }
     });
     
     // Çiçek animasyonları oluştur
