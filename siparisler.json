@@ -1,0 +1,18 @@
+[
+    {
+        "id": "6935b1b0bebf0",
+        "tarih": "2025-12-07 17:56:16",
+        "urunler": [
+            {
+                "id": 3,
+                "ad": "Renkli Lale Demeti",
+                "fiyat": 89.99,
+                "resim": "images\/lale-demeti.jpg",
+                "miktar": 2
+            }
+        ],
+        "toplam": 179.98,
+        "odeme_tipi": "banka_havalesi",
+        "durum": "beklemede"
+    }
+]

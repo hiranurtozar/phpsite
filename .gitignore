@@ -1,0 +1,31 @@
+# Hassas dosyalar - KESİNLİKLE GİTHUB'A GÖNDERME
+*.log
+mail_log.txt
+kullaniciar.json
+users.json
+comments.json
+chat.json
+ayarlar.json
+sparisler.json
+urunler.json
+yourunar.json
+
+# IDE dosyaları
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Geçici dosyalar
+tmp/
+temp/
+*.tmp
+
+# Gereksiz PHP dosyaları
+error_log
+php.ini
