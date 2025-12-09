@@ -937,6 +937,42 @@ if(!file_exists($yorumlar_dosya)) {
         .hero-flower-4 { bottom: 35%; right: 10%; animation-delay: 3s; }
         .hero-flower-5 { top: 40%; left: 20%; animation-delay: 4s; }
         .hero-flower-6 { top: 50%; right: 20%; animation-delay: 5s; }
+        
+        /* Auth Button Styling */
+        .auth-button {
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .auth-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 14px rgba(255, 107, 157, 0.15);
+            color: white;
+            text-decoration: none;
+        }
+        
+        /* Sepet sayacı */
+        .sepet-sayaci {
+            background: #ff6b9d;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 5px;
+            font-weight: bold;
+            animation: bounce 0.5s;
+        }
     </style>
     
     <!-- JavaScript Fonksiyonları -->
@@ -952,16 +988,39 @@ if(!file_exists($yorumlar_dosya)) {
         document.body.style.overflow = 'auto';
     }
     
+    // MODAL TAB değiştirme fonksiyonunu düzelt
     function acModalTab(tab) {
-        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.modal-form').forEach(f => f.classList.remove('active'));
+        // Tüm tab'ları pasif yap
+        document.querySelectorAll('.modal-tab').forEach(t => {
+            t.classList.remove('active');
+        });
+        
+        // Tüm formları gizle
+        document.querySelectorAll('.modal-form').forEach(f => {
+            f.classList.remove('active');
+            f.style.display = 'none';
+        });
         
         if(tab === 'giris') {
-            document.querySelector('.modal-tab[data-tab="giris"]').classList.add('active');
-            document.getElementById('girisForm').classList.add('active');
+            // Giriş tab'ını aktif yap
+            const girisTab = document.querySelector('.modal-tab[data-tab="giris"]');
+            if(girisTab) girisTab.classList.add('active');
+            // Giriş formunu göster
+            const girisForm = document.getElementById('girisForm');
+            if(girisForm) {
+                girisForm.classList.add('active');
+                girisForm.style.display = 'block';
+            }
         } else if(tab === 'kayit') {
-            document.querySelector('.modal-tab[data-tab="kayit"]').classList.add('active');
-            document.getElementById('kayitForm').classList.add('active');
+            // Kayıt tab'ını aktif yap
+            const kayitTab = document.querySelector('.modal-tab[data-tab="kayit"]');
+            if(kayitTab) kayitTab.classList.add('active');
+            // Kayıt formunu göster
+            const kayitForm = document.getElementById('kayitForm');
+            if(kayitForm) {
+                kayitForm.classList.add('active');
+                kayitForm.style.display = 'block';
+            }
         }
     }
     
@@ -1302,6 +1361,14 @@ if(!file_exists($yorumlar_dosya)) {
         
         // Favori sayısını yükle
         updateFavoriteCount();
+        
+        // Modal tab'ları için event listener'lar ekle
+        document.querySelectorAll('.modal-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                acModalTab(tabName);
+            });
+        });
     });
     
     // Çiçek animasyonları oluştur
@@ -1462,6 +1529,142 @@ if(!file_exists($yorumlar_dosya)) {
     <!-- PROGRESS BAR -->
     <div class="progress-bar"></div>
 
+    <!-- TOAST MESAJLARI -->
+    <?php if(isset($_SESSION['mesaj'])): ?>
+    <div class="toast-container">
+        <div class="toast toast-<?php echo $_SESSION['mesaj']['tip']; ?>">
+            <?php 
+            $icon = '✅';
+            if($_SESSION['mesaj']['tip'] == 'error') $icon = '❌';
+            if($_SESSION['mesaj']['tip'] == 'warning') $icon = '⚠️';
+            if($_SESSION['mesaj']['tip'] == 'info') $icon = 'ℹ️';
+            ?>
+            <span><?php echo $icon . ' ' . $_SESSION['mesaj']['metin']; ?></span>
+        </div>
+    </div>
+    <?php unset($_SESSION['mesaj']); ?>
+    <?php endif; ?>
+
+    <?php if(isset($_SESSION['auth_message'])): ?>
+    <div class="toast-container">
+        <div class="toast toast-<?php echo $_SESSION['auth_message']['type']; ?>">
+            <?php 
+            $icon = '✅';
+            if($_SESSION['auth_message']['type'] == 'error') $icon = '❌';
+            if($_SESSION['auth_message']['type'] == 'warning') $icon = '⚠️';
+            if($_SESSION['auth_message']['type'] == 'info') $icon = 'ℹ️';
+            ?>
+            <span><?php echo $icon . ' ' . $_SESSION['auth_message']['text']; ?></span>
+        </div>
+    </div>
+    <?php unset($_SESSION['auth_message']); ?>
+    <?php endif; ?>
+
+    <!-- NAVBAR -->
+    <nav class="navbar animated-nav">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon">🌸</span>
+                <span class="logo-text"><?php echo $dil == 'tr' ? 'ÇiçekBahçesi' : 'FlowerGarden'; ?></span>
+            </div>
+            
+            <?php if(kullaniciGirisKontrol()): ?>
+                <!-- Giriş yapmış kullanıcı için menü -->
+                <div class="kullanici-bilgi animated-fadein">
+                    <i class="fas fa-user-circle"></i> 👋 <?php echo $dil == 'tr' ? 'Hoş geldin,' : 'Welcome,'; ?> 
+                    <strong><?php echo htmlspecialchars($_SESSION['ad_soyad'] ?? ''); ?></strong>
+                    <span class="user-points">(<?php echo $_SESSION['puan'] ?? 0; ?> puan)</span>
+                </div>
+                
+                <div class="nav-links">
+                    <a href="anasayfa.php?sayfa=anasayfa" class="nav-link btn-animated">🏠 <?php echo $text_selected['hosgeldin']; ?></a>
+                    <a href="urunler.php?sayfa=urunler&kategori=tumu" class="nav-link btn-animated">🌸 <?php echo $text_selected['urunler']; ?></a>
+                    <a href="sepet.php?sayfa=sepet" class="nav-link btn-animated sepet-ikonu">
+                        🛒 <?php echo $text_selected['sepet']; ?> 
+                        <?php if(isset($_SESSION['sepet']) && count($_SESSION['sepet']) > 0): ?>
+                            <span class="sepet-sayaci animated-bounce"><?php echo count($_SESSION['sepet']); ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <a href="favoriler.php?sayfa=favoriler" class="nav-link btn-animated">
+                        ❤️ <?php echo $text_selected['favoriler']; ?>
+                        <?php if(isset($_SESSION['favoriler']) && count($_SESSION['favoriler']) > 0): ?>
+                            <span class="favori-sayaci animated-bounce"><?php echo count($_SESSION['favoriler']); ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <a href="siparisler.php?sayfa=siparisler" class="nav-link btn-animated">📋 <?php echo $text_selected['siparisler']; ?></a>
+                    <a href="kuponlar.php?sayfa=kuponlarim" class="nav-link btn-animated">🎫 <?php echo $text_selected['kuponlarim']; ?></a>
+                    <a href="profil.php?sayfa=profil" class="nav-link btn-animated">👤 <?php echo $text_selected['profilim']; ?></a>
+                    <a href="iletisim.php?sayfa=iletisim" class="nav-link btn-animated">📞 <?php echo $text_selected['iletisim']; ?></a>
+                    <a href="auth.php?action=cikis" class="nav-link cikis btn-animated">🚪 <?php echo $text_selected['cikis']; ?></a>
+                    
+                    <select class="dil-secici btn-animated" onchange="dilDegistir(this.value)">
+                        <option value="tr" <?php echo $dil == 'tr' ? 'selected' : ''; ?>>🇹🇷 Türkçe</option>
+                        <option value="en" <?php echo $dil == 'en' ? 'selected' : ''; ?>>🇺🇸 English</option>
+                    </select>
+                    
+                    <button class="tema-degistirici btn-animated" onclick="temaDegistir()">
+                        <?php echo $tema === 'light' ? '🌙' : '☀️'; ?>
+                    </button>
+                </div>
+                
+            <?php else: ?>
+                <!-- Giriş yapmamış kullanıcı için menü -->
+                <div class="nav-links">
+                    <a href="anasayfa.php?sayfa=anasayfa" class="nav-link btn-animated">🏠 <?php echo $text_selected['hosgeldin']; ?></a>
+                    <a href="urunler.php?sayfa=urunler&kategori=tumu" class="nav-link btn-animated">🌸 <?php echo $text_selected['urunler']; ?></a>
+                    <a href="#" onclick="acModal(); acModalTab('giris'); return false;" class="nav-link btn-animated sepet-ikonu">
+                        🛒 <?php echo $text_selected['sepet']; ?>
+                    </a>
+                    <a href="favoriler.php?sayfa=favoriler" class="nav-link btn-animated">
+                        ❤️ <?php echo $text_selected['favoriler']; ?>
+                        <?php if(isset($_SESSION['favoriler']) && count($_SESSION['favoriler']) > 0): ?>
+                            <span class="favori-sayaci animated-bounce"><?php echo count($_SESSION['favoriler']); ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <a href="#" onclick="acModal(); acModalTab('giris'); return false;" class="nav-link btn-animated">📋 <?php echo $text_selected['siparisler']; ?></a>
+                    <a href="#" onclick="acModal(); acModalTab('giris'); return false;" class="nav-link btn-animated">🎫 <?php echo $text_selected['kupon']; ?></a>
+                    <a href="#" onclick="acModal(); acModalTab('giris'); return false;" class="nav-link btn-animated">👤 <?php echo $text_selected['profilim']; ?></a>
+                    <a href="iletisim.php?sayfa=iletisim" class="nav-link btn-animated">📞 <?php echo $text_selected['iletisim']; ?></a>
+                    
+                    <!-- TEK BUTON: Hem giriş hem üye ol için -->
+                    <button class="auth-button btn-animated" onclick="acModal(); acModalTab('giris');">
+                        <i class="fas fa-user"></i>
+                        <span><?php echo $dil == 'tr' ? 'Giriş Yap / Üye Ol' : 'Login / Register'; ?></span>
+                    </button>
+                    
+                    <select class="dil-secici btn-animated" onchange="dilDegistir(this.value)">
+                        <option value="tr" <?php echo $dil == 'tr' ? 'selected' : ''; ?>>🇹🇷 Türkçe</option>
+                        <option value="en" <?php echo $dil == 'en' ? 'selected' : ''; ?>>🇺🇸 English</option>
+                    </select>
+                    
+                    <button class="tema-degistirici btn-animated" onclick="temaDegistir()">
+                        <?php echo $tema === 'light' ? '🌙' : '☀️'; ?>
+                    </button>
+                </div>
+            <?php endif; ?>
+        </div>
+    </nav>
+
+    <!-- CANLI SOHBET WIDGET - HERKES KULLANABİLİR -->
+    <div class="chat-widget">
+        <button class="chat-toggle" onclick="toggleChat()">
+            <i class="fas fa-comment-dots"></i>
+        </button>
+        <div class="chat-box" id="chatBox">
+            <div class="chat-header">
+                <h3><i class="fas fa-headset"></i> <?php echo $dil == 'tr' ? 'Canlı Destek' : 'Live Support'; ?></h3>
+                <button class="chat-close" onclick="toggleChat()">&times;</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Mesajlar buraya gelecek -->
+            </div>
+            <div class="chat-input">
+                <input type="text" id="chatInput" placeholder="<?php echo $dil == 'tr' ? 'Mesajınızı yazın...' : 'Type your message...'; ?>" autocomplete="off">
+                <button onclick="sendMessage()" class="btn-animated"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
     <!-- GELİŞMİŞ GİRİŞ MODALI -->
     <div id="loginModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -1528,7 +1731,7 @@ if(!file_exists($yorumlar_dosya)) {
                 </div>
             </form>
             
-            <!-- Kayıt Formu - YENİ TASARIM -->
+            <!-- Kayıt Formu -->
             <form method="post" action="auth.php" class="modal-form" id="kayitForm" style="display: none;">
                 <input type="hidden" name="action" value="kayit">
                 <input type="hidden" name="csrf_token" value="<?php echo csrfTokenOlustur(); ?>">
@@ -1610,122 +1813,6 @@ if(!file_exists($yorumlar_dosya)) {
                     </ul>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- TOAST MESAJLARI -->
-    <?php if(isset($_SESSION['mesaj'])): ?>
-    <div class="toast-container">
-        <div class="toast toast-<?php echo $_SESSION['mesaj']['tip']; ?>">
-            <?php 
-            $icon = '✅';
-            if($_SESSION['mesaj']['tip'] == 'error') $icon = '❌';
-            if($_SESSION['mesaj']['tip'] == 'warning') $icon = '⚠️';
-            if($_SESSION['mesaj']['tip'] == 'info') $icon = 'ℹ️';
-            ?>
-            <span><?php echo $icon . ' ' . $_SESSION['mesaj']['metin']; ?></span>
-        </div>
-    </div>
-    <?php unset($_SESSION['mesaj']); ?>
-    <?php endif; ?>
-
-    <?php if(isset($_SESSION['auth_message'])): ?>
-    <div class="toast-container">
-        <div class="toast toast-<?php echo $_SESSION['auth_message']['type']; ?>">
-            <?php 
-            $icon = '✅';
-            if($_SESSION['auth_message']['type'] == 'error') $icon = '❌';
-            if($_SESSION['auth_message']['type'] == 'warning') $icon = '⚠️';
-            if($_SESSION['auth_message']['type'] == 'info') $icon = 'ℹ️';
-            ?>
-            <span><?php echo $icon . ' ' . $_SESSION['auth_message']['text']; ?></span>
-        </div>
-    </div>
-    <?php unset($_SESSION['auth_message']); ?>
-    <?php endif; ?>
-
-    <!-- NAVBAR -->
-    <nav class="navbar animated-nav">
-        <div class="nav-container">
-            <div class="logo">
-                <span class="logo-icon">🌸</span>
-                <span class="logo-text"><?php echo $dil == 'tr' ? 'ÇiçekBahçesi' : 'FlowerGarden'; ?></span>
-            </div>
-            
-            <?php if(kullaniciGirisKontrol()): ?>
-                <div class="kullanici-bilgi animated-fadein">
-                    <i class="fas fa-user-circle"></i> 👋 <?php echo $dil == 'tr' ? 'Hoş geldin,' : 'Welcome,'; ?> 
-                    <strong><?php echo htmlspecialchars($_SESSION['ad_soyad'] ?? ''); ?></strong>
-                    <span class="user-points">(<?php echo $_SESSION['puan'] ?? 0; ?> puan)</span>
-                </div>
-            <?php endif; ?>
-            
-            <div class="nav-links">
-                <a href="anasayfa.php?sayfa=anasayfa" class="nav-link btn-animated">🏠 <?php echo $text_selected['hosgeldin']; ?></a>
-                <a href="urunler.php?sayfa=urunler&kategori=tumu" class="nav-link btn-animated">🌸 <?php echo $text_selected['urunler']; ?></a>
-                <a href="sepet.php?sayfa=sepet" class="nav-link btn-animated sepet-ikonu">
-                    🛒 <?php echo $text_selected['sepet']; ?> 
-                    <?php if(isset($_SESSION['sepet']) && count($_SESSION['sepet']) > 0): ?>
-                        <span class="sepet-sayaci animated-bounce"><?php echo count($_SESSION['sepet']); ?></span>
-                    <?php endif; ?>
-                </a>
-                
-                <!-- FAVORİLER - HERKES GÖREBİLİR -->
-                <a href="favoriler.php?sayfa=favoriler" class="nav-link btn-animated">
-                    ❤️ <?php echo $text_selected['favoriler']; ?>
-                    <?php if(isset($_SESSION['favoriler']) && count($_SESSION['favoriler']) > 0): ?>
-                        <span class="favori-sayaci animated-bounce"><?php echo count($_SESSION['favoriler']); ?></span>
-                    <?php endif; ?>
-                </a>
-                
-                <?php if(kullaniciGirisKontrol()): ?>
-                    <a href="siparisler.php?sayfa=siparisler" class="nav-link btn-animated">📋 <?php echo $text_selected['siparisler']; ?></a>
-                    <a href="kuponlar.php?sayfa=kuponlarim" class="nav-link btn-animated">🎫 <?php echo $text_selected['kuponlarim']; ?></a>
-                    <a href="profil.php?sayfa=profil" class="nav-link btn-animated">👤 <?php echo $text_selected['profilim']; ?></a>
-                    <a href="auth.php?action=cikis" class="nav-link cikis btn-animated">🚪 <?php echo $text_selected['cikis']; ?></a>
-                <?php else: ?>
-                    <a href="#" onclick="acModal(); acModalTab('giris'); return false;" class="nav-link btn-animated">📋 <?php echo $text_selected['siparisler']; ?></a>
-                    <a href="#" onclick="acModal(); acModalTab('giris'); return false;" class="nav-link btn-animated">🎫 <?php echo $text_selected['kupon']; ?></a>
-                    <a href="#" onclick="acModal(); acModalTab('giris'); return false;" class="nav-link btn-animated">👤 <?php echo $text_selected['profilim']; ?></a>
-                <?php endif; ?>
-                
-                <a href="iletisim.php?sayfa=iletisim" class="nav-link btn-animated">📞 <?php echo $text_selected['iletisim']; ?></a>
-                
-                <select class="dil-secici btn-animated" onchange="dilDegistir(this.value)">
-                    <option value="tr" <?php echo $dil == 'tr' ? 'selected' : ''; ?>>🇹🇷 Türkçe</option>
-                    <option value="en" <?php echo $dil == 'en' ? 'selected' : ''; ?>>🇺🇸 English</option>
-                </select>
-                
-                <button class="tema-degistirici btn-animated" onclick="temaDegistir()">
-                    <?php echo $tema === 'light' ? '🌙' : '☀️'; ?>
-                </button>
-                
-                <?php if(!kullaniciGirisKontrol()): ?>
-                    <a href="#" onclick="acModal(); return false;" class="nav-link cikis btn-animated">
-                        👤 <?php echo $text_selected['giris']; ?> / <?php echo $text_selected['uye_ol']; ?>
-                    </a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </nav>
-
-    <!-- CANLI SOHBET WIDGET - HERKES KULLANABİLİR -->
-    <div class="chat-widget">
-        <button class="chat-toggle" onclick="toggleChat()">
-            <i class="fas fa-comment-dots"></i>
-        </button>
-        <div class="chat-box" id="chatBox">
-            <div class="chat-header">
-                <h3><i class="fas fa-headset"></i> <?php echo $dil == 'tr' ? 'Canlı Destek' : 'Live Support'; ?></h3>
-                <button class="chat-close" onclick="toggleChat()">&times;</button>
-            </div>
-            <div class="chat-messages" id="chatMessages">
-                <!-- Mesajlar buraya gelecek -->
-            </div>
-            <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="<?php echo $dil == 'tr' ? 'Mesajınızı yazın...' : 'Type your message...'; ?>" autocomplete="off">
-                <button onclick="sendMessage()" class="btn-animated"><i class="fas fa-paper-plane"></i></button>
-            </div>
         </div>
     </div>
 
