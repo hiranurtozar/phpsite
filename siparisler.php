@@ -1,6 +1,33 @@
 <?php
 require_once 'cicek.php';
 require_once 'header.php';
+
+// Oturum başlat
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Admin giriş kontrolü
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    // Giriş yapılmamışsa auth.php'ye yönlendir
+    $_SESSION['auth_message'] = [
+        'type' => 'error', 
+        'text' => 'Bu sayfayı görüntülemek için admin girişi yapmalısınız!'
+    ];
+    header('Location: auth.php');
+    exit;
+}
+
+// Dil ayarı
+$dil = isset($_COOKIE['dil']) ? $_COOKIE['dil'] : 'tr';
+
+// Mevcut sayfa bilgisi (dosya adından al)
+$sayfa = pathinfo($_SERVER['PHP_SELF'], PATHINFO_FILENAME);
+
+// Admin email
+$admin_email = $_SESSION['admin_email'] ?? 'Admin';
+?>
+
 if(!isset($_SESSION['giris'])) {
     echo '<div class="hosgeldin" style="text-align:center;">';
     echo '<h2>📋 ' . $text['siparislerim'] . '</h2>';

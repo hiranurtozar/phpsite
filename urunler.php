@@ -1,277 +1,327 @@
 <?php
-require_once 'cicek.php';
 require_once 'header.php';
-ob_start();
-$kategori = $_GET['kategori'] ?? 'tumu';
-$arama = $_GET['arama'] ?? '';
 
-// TÜM ürünleri getir (cicek.php'deki fonksiyonu kullan)
-// NOT: urunleriGetir fonksiyonu varsayılan olarak tüm ürünleri döndürecek
-$tum_urunler = urunleriGetir($kategori);
+// Dil ayarı
+$dil = isset($_COOKIE['dil']) ? $_COOKIE['dil'] : 'tr';
 
-// Eğer kategori "tumu" ise tüm ürünleri göster
-// Eğer belirli bir kategori ise sadece o kategoriye ait ürünleri göster
-$urunler = $tum_urunler;
+// Mevcut sayfa bilgisi
+$sayfa = 'urunler';
 
-// Arama filtresi
-if($arama) {
-    $arama = strtolower(trim($arama));
-    $urunler = array_filter($urunler, function($urun) use ($arama, $dil) {
-        $ad = strtolower(($dil == 'tr' ? ($urun['tr_ad'] ?? $urun['ad'] ?? '') : ($urun['en_ad'] ?? $urun['ad'] ?? '')));
-        $aciklama = strtolower(($dil == 'tr' ? ($urun['tr_aciklama'] ?? $urun['aciklama'] ?? '') : ($urun['en_aciklama'] ?? $urun['aciklama'] ?? '')));
-        return strpos($ad, $arama) !== false || strpos($aciklama, $arama) !== false;
-    });
-    $urunler = array_values($urunler);
+// Kategori
+$kategori = isset($_GET['kategori']) ? $_GET['kategori'] : 'tumu';
+
+// Arama kelimesi
+$arama_kelimesi = isset($_GET['arama']) ? trim($_GET['arama']) : '';
+
+// Ürünleri getirme fonksiyonu
+function urunleriGetir($kategori = 'tumu', $arama = '') {
+    // Örnek ürün verileri
+    $urunler = [
+        [
+            'id' => 1,
+            'ad' => 'Kırmızı Gül Buketi',
+            'aciklama' => '12 adet taze kırmızı gül, zarif paketleme',
+            'fiyat' => 129.99,
+            'resim' => 'gul-buket.jpg',
+            'kategori' => 'gul',
+            'stok' => 15,
+            'indirim' => 10,
+            'puan' => 4.8
+        ],
+        [
+            'id' => 2,
+            'ad' => 'Beyaz Orkide',
+            'aciklama' => 'Lüks beyaz orkide, saksılı',
+            'fiyat' => 199.99,
+            'resim' => 'orkide.jpg',
+            'kategori' => 'orkide',
+            'stok' => 8,
+            'indirim' => 0,
+            'puan' => 4.9
+        ],
+        [
+            'id' => 3,
+            'ad' => 'Renkli Lale Demeti',
+            'aciklama' => '5 renkli lale demeti, bahar havası',
+            'fiyat' => 89.99,
+            'resim' => 'lale.jpg',
+            'kategori' => 'lale',
+            'stok' => 20,
+            'indirim' => 15,
+            'puan' => 4.7
+        ],
+        [
+            'id' => 4,
+            'ad' => 'Doğum Günü Buketi',
+            'aciklama' => 'Özel doğum günü buketi, renkli çiçekler',
+            'fiyat' => 149.99,
+            'resim' => 'dogum-gunu.jpg',
+            'kategori' => 'buket',
+            'stok' => 12,
+            'indirim' => 5,
+            'puan' => 4.6
+        ],
+        [
+            'id' => 5,
+            'ad' => 'Mini Sukulent Seti',
+            'aciklama' => '3 adet minyatür sukulent, teraryum',
+            'fiyat' => 69.99,
+            'resim' => 'sukulent.jpg',
+            'kategori' => 'sukulent',
+            'stok' => 25,
+            'indirim' => 20,
+            'puan' => 4.5
+        ],
+        [
+            'id' => 6,
+            'ad' => 'Pembe Gül Demeti',
+            'aciklama' => 'Romantik pembe gül demeti, 24 adet',
+            'fiyat' => 179.99,
+            'resim' => 'pembe-gul.jpg',
+            'kategori' => 'gul',
+            'stok' => 10,
+            'indirim' => 0,
+            'puan' => 4.8
+        ],
+        [
+            'id' => 7,
+            'ad' => 'Mor Orkide',
+            'aciklama' => 'Nadir mor orkide, özel bakım',
+            'fiyat' => 249.99,
+            'resim' => 'mor-orkide.jpg',
+            'kategori' => 'orkide',
+            'stok' => 5,
+            'indirim' => 10,
+            'puan' => 4.9
+        ],
+        [
+            'id' => 8,
+            'ad' => 'Sarı Lale Buketi',
+            'aciklama' => 'Parlak sarı laleler, mutluluk sembolü',
+            'fiyat' => 79.99,
+            'resim' => 'sari-lale.jpg',
+            'kategori' => 'lale',
+            'stok' => 18,
+            'indirim' => 0,
+            'puan' => 4.7
+        ]
+    ];
+    
+    // Kategoriye göre filtrele
+    if ($kategori != 'tumu') {
+        $urunler = array_filter($urunler, function($urun) use ($kategori) {
+            return $urun['kategori'] == $kategori;
+        });
+    }
+    
+    // Aramaya göre filtrele
+    if (!empty($arama)) {
+        $arama = strtolower($arama);
+        $urunler = array_filter($urunler, function($urun) use ($arama) {
+            return strpos(strtolower($urun['ad']), $arama) !== false || 
+                   strpos(strtolower($urun['aciklama']), $arama) !== false;
+        });
+    }
+    
+    return array_values($urunler);
+}
+
+// Ürünleri getir
+$urunler = urunleriGetir($kategori, $arama_kelimesi);
+
+// Kategori isimleri
+$kategori_isimleri = [
+    'tr' => [
+        'tumu' => 'Tüm Ürünler',
+        'gul' => 'Güller',
+        'orkide' => 'Orkideler',
+        'lale' => 'Laleler',
+        'buket' => 'Buketler',
+        'sukulent' => 'Sukulentler'
+    ],
+    'en' => [
+        'tumu' => 'All Products',
+        'gul' => 'Roses',
+        'orkide' => 'Orchids',
+        'lale' => 'Tulips',
+        'buket' => 'Bouquets',
+        'sukulent' => 'Succulents'
+    ]
+];
+
+// Favori kontrol fonksiyonu
+function favoriKontrol($urun_id) {
+    return isset($_SESSION['favoriler']) && in_array($urun_id, $_SESSION['favoriler']);
 }
 ?>
 
 <style>
-    /* Ürünler Sayfası Özel Stilleri - PEMBE TEMA */
-    .products-page {
-        padding: 40px 20px;
-        max-width: 1400px;
-        margin: 0 auto;
+    /* ÜRÜNLER SAYFASI STİLLERİ */
+    .urunler-container {
+        padding: 20px 0;
     }
     
-    .page-header {
-        text-align: center;
-        margin-bottom: 40px;
-    }
-    
-    .page-header h1 {
-        font-size: 2.8rem;
-        color: #333;
-        margin-bottom: 10px;
-        background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    
-    .page-header p {
-        color: #666;
-        opacity: 0.8;
-        font-size: 1.1rem;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-    
-    /* Kategori Filtreleri */
-    .category-filters {
+    .kategori-filtreleri {
         display: flex;
-        justify-content: center;
         gap: 10px;
-        margin-bottom: 40px;
+        margin-bottom: 30px;
         flex-wrap: wrap;
+        justify-content: center;
     }
     
-    .category-btn {
-        padding: 12px 25px;
-        border: 2px solid #e0e0e0;
+    .kategori-btn {
+        padding: 10px 20px;
         background: white;
+        border: 2px solid #ffeef2;
         border-radius: 25px;
-        text-decoration: none;
-        color: #333;
+        color: #666;
         font-weight: 500;
+        cursor: pointer;
         transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        text-decoration: none;
     }
     
-    .category-btn:hover {
-        border-color: #ff6b9d;
-        color: #ff6b9d;
-        transform: translateY(-2px);
-    }
-    
-    .category-btn.active {
+    .kategori-btn:hover,
+    .kategori-btn.active {
         background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
         color: white;
-        border-color: transparent;
+        border-color: #ff6b9d;
+        transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(255, 107, 157, 0.2);
     }
     
-    /* Arama Çubuğu - ANİMASYONLU */
-    .search-container {
-        max-width: 800px;
-        margin: 0 auto 40px;
-        position: relative;
-    }
-    
-    .search-box {
-        position: relative;
-        animation: slideIn 0.5s ease-out;
-    }
-    
-    .search-input {
-        width: 100%;
-        padding: 18px 20px 18px 60px;
-        border: 2px solid #ffeef2;
-        border-radius: 15px;
-        font-size: 1.1rem;
-        transition: all 0.3s;
-        background: white;
-        box-shadow: 0 5px 20px rgba(255, 107, 157, 0.1);
-    }
-    
-    .search-input:focus {
-        outline: none;
-        border-color: #ff6b9d;
-        box-shadow: 0 8px 25px rgba(255, 107, 157, 0.15);
-        transform: scale(1.02);
-    }
-    
-    .search-icon {
-        position: absolute;
-        left: 25px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #ff6b9d;
-        font-size: 1.3rem;
-        z-index: 2;
-    }
-    
-    .search-results {
-        text-align: center;
-        color: #666;
-        opacity: 0.7;
-        margin-bottom: 30px;
-        padding: 15px;
-        background: #fff9fb;
-        border-radius: 10px;
-        border: 1px solid #ffeef2;
-        animation: fadeIn 0.5s ease-out;
-    }
-    
-    /* Ürün Grid */
-    .products-grid {
+    .urun-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 30px;
-        margin-bottom: 60px;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 25px;
+        margin-top: 20px;
     }
     
-    /* Ürün Kartı */
-    .product-card {
+    .urun-card {
         background: white;
         border-radius: 15px;
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-        animation: fadeIn 0.5s ease-out;
+        box-shadow: 0 5px 20px rgba(255, 107, 157, 0.1);
+        transition: all 0.3s;
         position: relative;
-        border: 1px solid #f0f0f0;
     }
     
-    .product-card:hover {
+    .urun-card:hover {
         transform: translateY(-10px);
-        box-shadow: 0 20px 40px rgba(255, 107, 157, 0.12);
+        box-shadow: 0 15px 30px rgba(255, 107, 157, 0.2);
     }
     
-    .product-badge {
-        position: absolute;
-        top: 15px;
-        left: 15px;
-        background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
-        color: white;
-        padding: 5px 12px;
-        border-radius: 15px;
-        font-size: 0.8rem;
-        font-weight: bold;
-        z-index: 2;
-    }
-    
-    .product-image {
-        height: 220px;
+    .urun-resim {
+        width: 100%;
+        height: 200px;
         background: linear-gradient(135deg, #fff5f7 0%, #ffeef2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .product-image-content {
-        font-size: 4.5rem;
-        transition: transform 0.5s;
-    }
-    
-    .product-card:hover .product-image-content {
-        transform: scale(1.1);
-    }
-    
-    .product-info {
-        padding: 25px;
-    }
-    
-    .product-category {
+        font-size: 60px;
         color: #ff6b9d;
-        font-size: 0.9rem;
+    }
+    
+    .urun-bilgi {
+        padding: 20px;
+    }
+    
+    .urun-baslik {
+        font-size: 1.2rem;
         font-weight: 600;
-        margin-bottom: 8px;
+        color: #333;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .urun-aciklama {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+        line-height: 1.5;
+    }
+    
+    .urun-fiyat {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .fiyat-aktuel {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #ff6b9d;
+    }
+    
+    .fiyat-eski {
+        font-size: 1rem;
+        color: #999;
+        text-decoration: line-through;
+    }
+    
+    .indirim-badge {
+        background: #ff4757;
+        color: white;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .stok-bilgi {
         display: flex;
         align-items: center;
         gap: 5px;
-    }
-    
-    .product-title {
-        font-size: 1.3rem;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 10px;
-        line-height: 1.4;
-        height: 60px;
-        overflow: hidden;
-    }
-    
-    .product-description {
-        color: #666;
-        font-size: 0.95rem;
-        line-height: 1.6;
-        margin-bottom: 20px;
-        height: 60px;
-        overflow: hidden;
-    }
-    
-    .product-price {
-        font-size: 1.8rem;
-        font-weight: bold;
         color: #28a745;
-        margin-bottom: 20px;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
     }
     
-    .product-actions {
+    .urun-puan {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #ffc107;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    
+    .urun-actions {
         display: flex;
         gap: 10px;
     }
     
-    .btn-add-cart {
+    .btn-sepete-ekle {
         flex: 1;
         background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
         color: white;
         border: none;
-        padding: 12px;
+        padding: 10px;
         border-radius: 8px;
+        font-weight: 600;
         cursor: pointer;
-        font-weight: bold;
         transition: all 0.3s;
+        text-decoration: none;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
     }
     
-    .btn-add-cart:hover {
-        opacity: 0.9;
+    .btn-sepete-ekle:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(255, 107, 157, 0.2);
+        box-shadow: 0 5px 15px rgba(255, 107, 157, 0.3);
     }
     
-    .btn-favorite {
-        width: 45px;
+    .btn-favori {
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid #ffeef2;
+        color: #ccc;
+        width: 45px;
+        height: 45px;
         border-radius: 8px;
         cursor: pointer;
         transition: all 0.3s;
@@ -279,463 +329,249 @@ if($arama) {
         align-items: center;
         justify-content: center;
         font-size: 1.2rem;
-    }
-    
-    .btn-favorite:hover {
-        background: #ff4757;
-        color: white;
-        border-color: #ff4757;
-        transform: scale(1.1);
-    }
-    
-    .btn-favorite.active {
-        background: #ff4757;
-        color: white;
-        border-color: #ff4757;
-    }
-    
-    .product-stock {
-        margin-top: 10px;
-        font-size: 0.9rem;
-        color: #666;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    }
-    
-    .stock-available {
-        color: #28a745;
-    }
-    
-    .stock-low {
-        color: #ffc107;
-    }
-    
-    /* Boş Ürün Mesajı */
-    .empty-products {
-        text-align: center;
-        padding: 60px 20px;
-        grid-column: 1 / -1;
-    }
-    
-    .empty-icon {
-        font-size: 4rem;
-        margin-bottom: 20px;
-        opacity: 0.5;
-        animation: bounce 2s infinite;
-    }
-    
-    .empty-products h3 {
-        color: #333;
-        margin-bottom: 15px;
-    }
-    
-    .empty-products p {
-        color: #666;
-        max-width: 400px;
-        margin: 0 auto 30px;
-    }
-    
-    /* Sayfalama */
-    .pagination {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 40px;
-    }
-    
-    .page-btn {
-        width: 40px;
-        height: 40px;
-        border: 2px solid #e0e0e0;
-        background: white;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         text-decoration: none;
-        color: #333;
-        font-weight: 500;
-        transition: all 0.3s;
     }
     
-    .page-btn:hover {
-        border-color: #ff6b9d;
-        color: #ff6b9d;
-        transform: translateY(-2px);
-    }
-    
-    .page-btn.active {
-        background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+    .btn-favori:hover,
+    .btn-favori.active {
+        background: #ff6b9d;
         color: white;
-        border-color: transparent;
-        box-shadow: 0 5px 10px rgba(255, 107, 157, 0.2);
+        border-color: #ff6b9d;
     }
     
-    /* Animasyonlar */
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .btn-favori.active {
+        color: #ff6b9d;
+        background: white;
     }
     
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateX(-30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
+    .btn-favori.active:hover {
+        background: #ff6b9d;
+        color: white;
     }
     
-    /* Responsive */
+    .arama-sonucu {
+        text-align: center;
+        padding: 30px;
+        color: #666;
+    }
+    
+    .arama-sonucu h3 {
+        color: #ff6b9d;
+        margin-bottom: 10px;
+    }
+    
+    .urun-sayisi {
+        background: #ffeef2;
+        padding: 5px 15px;
+        border-radius: 15px;
+        color: #ff6b9d;
+        font-weight: 600;
+        margin-left: 10px;
+    }
+    
     @media (max-width: 768px) {
-        .products-grid {
+        .urun-grid {
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
         }
         
-        .category-filters {
+        .kategori-filtreleri {
             overflow-x: auto;
             padding-bottom: 10px;
             justify-content: flex-start;
-            scrollbar-width: thin;
-        }
-        
-        .category-filters::-webkit-scrollbar {
-            height: 4px;
-        }
-        
-        .category-btn {
-            white-space: nowrap;
-            padding: 10px 20px;
-            font-size: 0.9rem;
-        }
-        
-        .search-input {
-            padding: 15px 20px 15px 50px;
-            font-size: 1rem;
-        }
-        
-        .product-image {
-            height: 180px;
-        }
-        
-        .product-title,
-        .product-description {
-            height: auto;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .products-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .page-header h1 {
-            font-size: 2.2rem;
-        }
-        
-        .search-container {
-            margin: 0 10px 40px;
         }
     }
 </style>
 
-<div class="products-page">
-    <!-- Sayfa Başlığı -->
-    <div class="page-header">
-        <h1><?php echo $dil == 'tr' ? 'Çiçekler & Buketler' : 'Flowers & Bouquets'; ?></h1>
-        <p><?php echo $dil == 'tr' ? 'En güzel çiçekler ve özel buketler bir tık uzağınızda' : 'The most beautiful flowers and special bouquets are just one click away'; ?></p>
-    </div>
-
-    <!-- Kategori Filtreleri -->
-    <div class="category-filters">
-        <a href="urunler.php?sayfa=urunler&kategori=tumu" 
-           class="category-btn <?php echo $kategori == 'tumu' ? 'active' : ''; ?>">
-            🌟 <?php echo $dil == 'tr' ? 'Tüm Ürünler' : 'All Products'; ?>
-        </a>
-        <a href="urunler.php?sayfa=urunler&kategori=gul" 
-           class="category-btn <?php echo $kategori == 'gul' ? 'active' : ''; ?>">
-            🌹 <?php echo $dil == 'tr' ? 'Güller' : 'Roses'; ?>
-        </a>
-        <a href="urunler.php?sayfa=urunler&kategori=orkide" 
-           class="category-btn <?php echo $kategori == 'orkide' ? 'active' : ''; ?>">
-            💮 <?php echo $dil == 'tr' ? 'Orkideler' : 'Orchids'; ?>
-        </a>
-        <a href="urunler.php?sayfa=urunler&kategori=lale" 
-           class="category-btn <?php echo $kategori == 'lale' ? 'active' : ''; ?>">
-            🌷 <?php echo $dil == 'tr' ? 'Laleler' : 'Tulips'; ?>
-        </a>
-        <a href="urunler.php?sayfa=urunler&kategori=buket" 
-           class="category-btn <?php echo $kategori == 'buket' ? 'active' : ''; ?>">
-            💐 <?php echo $dil == 'tr' ? 'Buketler' : 'Bouquets'; ?>
-        </a>
-        <a href="urunler.php?sayfa=urunler&kategori=sukulent" 
-           class="category-btn <?php echo $kategori == 'sukulent' ? 'active' : ''; ?>">
-            🌵 <?php echo $dil == 'tr' ? 'Sukulentler' : 'Succulents'; ?>
-        </a>
-    </div>
-
-    <!-- Arama Çubuğu -->
-    <div class="search-container">
-        <form method="get" action="urunler.php" class="search-box">
-            <input type="hidden" name="sayfa" value="urunler">
-            <input type="hidden" name="kategori" value="<?php echo $kategori; ?>">
-            <div class="search-icon">🔍</div>
-            <input type="text" 
-                   name="arama" 
-                   class="search-input" 
-                   placeholder="<?php echo $dil == 'tr' ? 'Çiçek adı veya kategori ara...' : 'Search flower name or category...'; ?>"
-                   value="<?php echo htmlspecialchars($arama); ?>"
-                   autocomplete="off">
-        </form>
-    </div>
-
-    <!-- Arama Sonuçları -->
-    <?php if($arama): ?>
-    <div class="search-results">
-        <p>
-            "<?php echo htmlspecialchars($arama); ?>" <?php echo $dil == 'tr' ? 'için' : 'for'; ?> 
-            <strong><?php echo count($urunler); ?></strong> 
-            <?php echo $dil == 'tr' ? 'ürün bulundu' : 'products found'; ?>
-        </p>
-        <a href="urunler.php?sayfa=urunler&kategori=<?php echo $kategori; ?>" 
-           class="category-btn" style="font-size: 0.9rem; padding: 8px 15px;">
-            <?php echo $dil == 'tr' ? 'Aramayı Temizle' : 'Clear Search'; ?>
-        </a>
-    </div>
-    <?php endif; ?>
-
-    <!-- Ürün Grid -->
-    <?php if(empty($urunler)): ?>
-        <div class="empty-products">
-            <div class="empty-icon">🌱</div>
-            <h3><?php echo $dil == 'tr' ? 'Ürün Bulunamadı' : 'No Products Found'; ?></h3>
-            <p>
-                <?php echo $dil == 'tr' 
-                    ? 'Bu kategoride henüz ürün bulunmuyor veya aramanızla eşleşen ürün yok.' 
-                    : 'No products found in this category or matching your search.'; ?>
-            </p>
-            <a href="urunler.php?sayfa=urunler&kategori=tumu" class="btn-add-cart" style="width: auto; padding: 12px 30px; text-decoration: none;">
-                ← <?php echo $dil == 'tr' ? 'Tüm Ürünleri Gör' : 'View All Products'; ?>
-            </a>
-        </div>
-    <?php else: ?>
-        <div class="products-grid">
-            <?php foreach($urunler as $urun): 
-                // Dil'e göre ürün bilgileri
-                $urun_ad = $dil == 'tr' ? ($urun['tr_ad'] ?? $urun['ad'] ?? 'Ürün') : ($urun['en_ad'] ?? $urun['ad'] ?? 'Product');
-                $urun_aciklama = $dil == 'tr' ? ($urun['tr_aciklama'] ?? $urun['aciklama'] ?? '') : ($urun['en_aciklama'] ?? $urun['aciklama'] ?? '');
-                $kategori_adi = $urun['kategori'] ?? '';
-                
-                // Kategori ikonu
-                switch($kategori_adi) {
-                    case 'gul': $kategori_ikon = '🌹'; break;
-                    case 'orkide': $kategori_ikon = '💮'; break;
-                    case 'lale': $kategori_ikon = '🌷'; break;
-                    case 'buket': $kategori_ikon = '💐'; break;
-                    case 'sukulent': $kategori_ikon = '🌵'; break;
-                    default: $kategori_ikon = '🌸';
-                }
-                
-                // Stok durumu
-                $stok = $urun['stok'] ?? 0;
-                $stok_durumu = $stok > 10 ? 'stock-available' : ($stok > 0 ? 'stock-low' : '');
-                $stok_mesaji = $stok > 10 
-                    ? ($dil == 'tr' ? 'Stokta var' : 'In Stock') 
-                    : ($stok > 0 
-                        ? ($dil == 'tr' ? "Son {$stok} adet" : "Only {$stok} left") 
-                        : ($dil == 'tr' ? 'Stokta yok' : 'Out of Stock'));
-            ?>
-            <div class="product-card">
-                <?php if($stok < 5 && $stok > 0): ?>
-                    <div class="product-badge">🔥 <?php echo $dil == 'tr' ? 'Son Ürünler' : 'Limited Stock'; ?></div>
-                <?php endif; ?>
-                
-                <div class="product-image">
-                    <div class="product-image-content">
-                        <?php echo $kategori_ikon; ?>
-                    </div>
-                </div>
-                
-                <div class="product-info">
-                    <div class="product-category">
-                        <?php echo $kategori_ikon; ?>
-                        <?php 
-                        $kategori_isimleri = [
-                            'tr' => [
-                                'gul' => 'Gül',
-                                'orkide' => 'Orkide',
-                                'lale' => 'Lale',
-                                'buket' => 'Buket',
-                                'sukulent' => 'Sukulent'
-                            ],
-                            'en' => [
-                                'gul' => 'Rose',
-                                'orkide' => 'Orchid',
-                                'lale' => 'Tulip',
-                                'buket' => 'Bouquet',
-                                'sukulent' => 'Succulent'
-                            ]
-                        ];
-                        echo $kategori_isimleri[$dil][$kategori_adi] ?? ucfirst($kategori_adi);
-                        ?>
-                    </div>
-                    
-                    <h3 class="product-title"><?php echo htmlspecialchars($urun_ad); ?></h3>
-                    
-                    <p class="product-description"><?php echo htmlspecialchars($urun_aciklama); ?></p>
-                    
-                    <div class="product-price"><?php echo number_format($urun['fiyat'], 2); ?> ₺</div>
-                    
-                    <div class="product-stock <?php echo $stok_durumu; ?>">
-                        <span>📦</span>
-                        <span><?php echo $stok_mesaji; ?></span>
-                    </div>
-                    
-                    <div class="product-actions">
-                        <button class="btn-add-cart" onclick="addToCart(<?php echo $urun['id']; ?>)">
-                            🛒 <?php echo $dil == 'tr' ? 'Sepete Ekle' : 'Add to Cart'; ?>
-                        </button>
-                        <button class="btn-favorite" onclick="addToFavorites(<?php echo $urun['id']; ?>)">❤️</button>
-                    </div>
-                </div>
-            </div>
+<div class="container">
+    <div class="urunler-container">
+        <!-- Kategori Filtreleri -->
+        <div class="kategori-filtreleri">
+            <?php foreach($kategori_isimleri[$dil] as $key => $isim): ?>
+                <a href="urunler.php?kategori=<?php echo $key; ?><?php echo !empty($arama_kelimesi) ? '&arama=' . urlencode($arama_kelimesi) : ''; ?>" 
+                   class="kategori-btn <?php echo $kategori == $key ? 'active' : ''; ?>">
+                    <?php 
+                    // Emoji ikonları
+                    $emoji = [
+                        'tumu' => '🌸',
+                        'gul' => '🌹',
+                        'orkide' => '💮',
+                        'lale' => '🌷',
+                        'buket' => '💐',
+                        'sukulent' => '🌵'
+                    ];
+                    echo $emoji[$key] . ' ' . $isim;
+                    ?>
+                </a>
             <?php endforeach; ?>
         </div>
         
-        <!-- Sayfalama (basit versiyon) -->
-        <?php if(count($urunler) > 12): ?>
-        <div class="pagination">
-            <a href="#" class="page-btn">←</a>
-            <a href="#" class="page-btn active">1</a>
-            <a href="#" class="page-btn">2</a>
-            <a href="#" class="page-btn">3</a>
-            <a href="#" class="page-btn">→</a>
-        </div>
+        <!-- Arama Sonucu Başlığı -->
+        <?php if(!empty($arama_kelimesi)): ?>
+            <div class="arama-sonucu">
+                <h3>"<?php echo htmlspecialchars($arama_kelimesi); ?>" için arama sonuçları</h3>
+                <p><?php echo count($urunler); ?> ürün bulundu</p>
+            </div>
+        <?php else: ?>
+            <h2 style="color: #333; margin-bottom: 20px; display: flex; align-items: center;">
+                <?php echo $kategori_isimleri[$dil][$kategori]; ?>
+                <span class="urun-sayisi"><?php echo count($urunler); ?> ürün</span>
+            </h2>
         <?php endif; ?>
-    <?php endif; ?>
+        
+        <!-- Ürünler Grid -->
+        <?php if(count($urunler) > 0): ?>
+            <div class="urun-grid">
+                <?php foreach($urunler as $urun): 
+                    $indirimli_fiyat = $urun['indirim'] > 0 ? 
+                        $urun['fiyat'] * (100 - $urun['indirim']) / 100 : 
+                        $urun['fiyat'];
+                    $favori_durumu = favoriKontrol($urun['id']) ? 'active' : '';
+                ?>
+                    <div class="urun-card">
+                        <!-- Ürün Resim Alanı -->
+                        <div class="urun-resim">
+                            <?php 
+                            // Emoji ikonları
+                            $urun_emoji = [
+                                'gul' => '🌹',
+                                'orkide' => '💮',
+                                'lale' => '🌷',
+                                'buket' => '💐',
+                                'sukulent' => '🌵'
+                            ];
+                            echo $urun_emoji[$urun['kategori']] ?? '🌸';
+                            ?>
+                        </div>
+                        
+                        <!-- Ürün Bilgileri -->
+                        <div class="urun-bilgi">
+                            <div class="urun-baslik">
+                                <span><?php echo htmlspecialchars($urun['ad']); ?></span>
+                                <?php if($urun['indirim'] > 0): ?>
+                                    <span class="indirim-badge">-%<?php echo $urun['indirim']; ?></span>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <p class="urun-aciklama"><?php echo htmlspecialchars($urun['aciklama']); ?></p>
+                            
+                            <!-- Fiyat -->
+                            <div class="urun-fiyat">
+                                <?php if($urun['indirim'] > 0): ?>
+                                    <span class="fiyat-aktuel"><?php echo number_format($indirimli_fiyat, 2); ?> TL</span>
+                                    <span class="fiyat-eski"><?php echo number_format($urun['fiyat'], 2); ?> TL</span>
+                                <?php else: ?>
+                                    <span class="fiyat-aktuel"><?php echo number_format($urun['fiyat'], 2); ?> TL</span>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <!-- Stok Bilgisi -->
+                            <div class="stok-bilgi">
+                                <i class="fas fa-check-circle"></i>
+                                <span><?php echo $urun['stok']; ?> adet stokta</span>
+                            </div>
+                            
+                            <!-- Puan -->
+                            <div class="urun-puan">
+                                <i class="fas fa-star"></i>
+                                <span><?php echo $urun['puan']; ?></span>
+                                <span>(<?php echo rand(10, 100); ?> değerlendirme)</span>
+                            </div>
+                            
+                            <!-- Butonlar -->
+                            <div class="urun-actions">
+                                <a href="sepet.php?action=ekle&urun_id=<?php echo $urun['id']; ?>" 
+                                   class="btn-sepete-ekle"
+                                   onclick="return confirmAddToCart(<?php echo $urun['id']; ?>, '<?php echo addslashes($urun['ad']); ?>')">
+                                    <i class="fas fa-shopping-cart"></i> 
+                                    <?php echo $dil == 'tr' ? 'Sepete Ekle' : 'Add to Cart'; ?>
+                                </a>
+                                <a href="favoriler.php?action=<?php echo $favori_durumu ? 'cikar' : 'ekle'; ?>&urun_id=<?php echo $urun['id']; ?>" 
+                                   class="btn-favori <?php echo $favori_durumu; ?>"
+                                   title="<?php echo $favori_durumu ? ($dil == 'tr' ? 'Favorilerden Çıkar' : 'Remove from Favorites') : ($dil == 'tr' ? 'Favorilere Ekle' : 'Add to Favorites'); ?>">
+                                    <i class="fas fa-heart"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <!-- Ürün bulunamadıysa -->
+            <div style="text-align: center; padding: 50px; color: #666;">
+                <div style="font-size: 60px; color: #ffeef2; margin-bottom: 20px;">🌸</div>
+                <h3 style="color: #ff6b9d; margin-bottom: 10px;">
+                    <?php echo $dil == 'tr' ? 'Ürün bulunamadı' : 'No products found'; ?>
+                </h3>
+                <p>
+                    <?php echo $dil == 'tr' 
+                        ? 'Aradığınız kriterlere uygun ürün bulunamadı.' 
+                        : 'No products matching your criteria were found.'; 
+                    ?>
+                </p>
+                <a href="urunler.php" style="
+                    display: inline-block;
+                    margin-top: 20px;
+                    padding: 10px 25px;
+                    background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                ">
+                    <?php echo $dil == 'tr' ? 'Tüm Ürünleri Gör' : 'View All Products'; ?>
+                </a>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <script>
-// Sepete ekle
-function addToCart(productId) {
-    fetch('sepet.php?action=add&id=' + productId)
-        .then(response => response.json())
-        .then(data => {
-            if(data.success) {
-                showNotification('<?php echo $dil == "tr" ? "Ürün sepete eklendi!" : "Product added to cart!"; ?>', 'success');
-                updateCartCount();
-            } else {
-                showNotification(data.message || '<?php echo $dil == "tr" ? "Bir hata oluştu!" : "An error occurred!"; ?>', 'error');
-            }
-        })
-        .catch(error => {
-            showNotification('<?php echo $dil == "tr" ? "Bir hata oluştu!" : "An error occurred!"; ?>', 'error');
-            console.error('Sepete ekleme hatası:', error);
-        });
+// Sepete ekle onayı
+function confirmAddToCart(productId, productName) {
+    <?php if(!$is_logged_in): ?>
+        alert('<?php echo $dil == 'tr' ? "Sepete ürün eklemek için giriş yapmalısınız!" : "You must login to add products to cart!" ?>');
+        window.location.href = 'auth.php';
+        return false;
+    <?php else: ?>
+        if(confirm(productName + ' <?php echo $dil == 'tr' ? "sepete eklensin mi?" : "add to cart?" ?>')) {
+            return true;
+        }
+        return false;
+    <?php endif; ?>
 }
 
-// Favorilere ekle
-function addToFavorites(productId) {
-    const btn = event.target;
-    btn.classList.toggle('active');
-    
-    fetch('favoriler.php?action=toggle&id=' + productId)
-        .then(response => response.json())
-        .then(data => {
-            if(data.success) {
-                const isAdded = btn.classList.contains('active');
-                showNotification(
-                    isAdded 
-                        ? '<?php echo $dil == "tr" ? "Favorilere eklendi!" : "Added to favorites!"; ?>' 
-                        : '<?php echo $dil == "tr" ? "Favorilerden çıkarıldı!" : "Removed from favorites!"; ?>',
-                    'success'
-                );
-            }
-        })
-        .catch(error => {
-            console.error('Favori ekleme hatası:', error);
-        });
-}
-
-// Sepet sayacını güncelle
-function updateCartCount() {
-    const counter = document.querySelector('.sepet-sayaci');
-    if(counter) {
-        let count = parseInt(counter.textContent || 0);
-        counter.textContent = count + 1;
-        counter.classList.add('animated-bounce');
-        setTimeout(() => {
-            counter.classList.remove('animated-bounce');
-        }, 1000);
-    }
-}
-
-// Bildirim göster
-function showNotification(message, type = 'info') {
-    const toastContainer = document.querySelector('.toast-container') || (() => {
-        const div = document.createElement('div');
-        div.className = 'toast-container';
-        document.body.appendChild(div);
-        return div;
-    })();
-    
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    
-    let icon = 'ℹ️';
-    if(type === 'success') icon = '✅';
-    if(type === 'error') icon = '❌';
-    if(type === 'warning') icon = '⚠️';
-    
-    toast.innerHTML = `<span>${icon} ${message}</span>`;
-    toastContainer.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
-}
-
-// Arama input'u için otomatik submit
-const searchInput = document.querySelector('.search-input');
-let searchTimeout;
-searchInput?.addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        this.form.submit();
-    }, 500);
-});
-
-// Sayfa yüklendiğinde animasyonlar
+// Sayfa yüklendiğinde favori butonlarına click event'i ekle
 document.addEventListener('DOMContentLoaded', function() {
-    // Ürün kartlarına sırayla animasyon ekle
-    const productCards = document.querySelectorAll('.product-card');
-    productCards.forEach((card, index) => {
-        card.style.animationDelay = `${index * 0.1}s`;
+    // Favori butonlarına tıklama
+    document.querySelectorAll('.btn-favori').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            // Giriş kontrolü yok - herkes favori ekleyebilir
+            // Sadece butonun aktif/pasif durumunu değiştir
+            this.classList.toggle('active');
+            
+            // Butonun başlığını değiştir
+            if (this.classList.contains('active')) {
+                this.title = '<?php echo $dil == 'tr' ? "Favorilerden Çıkar" : "Remove from Favorites" ?>';
+            } else {
+                this.title = '<?php echo $dil == 'tr' ? "Favorilere Ekle" : "Add to Favorites" ?>';
+            }
+        });
     });
     
-    // Arama input'una focus animasyonu
-    if(searchInput) {
-        searchInput.addEventListener('focus', function() {
-            this.parentElement.style.transform = 'scale(1.02)';
+    // Animasyon için hover efekti
+    document.querySelectorAll('.urun-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-10px)';
+            this.style.boxShadow = '0 15px 30px rgba(255, 107, 157, 0.2)';
         });
         
-        searchInput.addEventListener('blur', function() {
-            this.parentElement.style.transform = 'scale(1)';
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 5px 20px rgba(255, 107, 157, 0.1)';
         });
-    }
+    });
 });
 </script>
 
-<?php
-ob_end_flush(); // Tamponu temizle
-require_once 'footer.php'; 
-?>
+<?php require_once 'footer.php'; ?>

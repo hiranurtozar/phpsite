@@ -1,283 +1,231 @@
 <?php
-// auth.php - DÜZELTİLMİŞ VERSİYON
-session_start();
+// auth.php - DÜZENLENMİŞ (HEADER OLMADAN)
+// Sadece gerekli session başlatma
 
-// JSON dosyalarını kontrol et
+// SESSION BAŞLATMA
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Dil ve tema değişkenlerini ayarla
+$dil = isset($_COOKIE['dil']) ? $_COOKIE['dil'] : 'tr';
+$tema = isset($_COOKIE['tema']) ? $_COOKIE['tema'] : 'light';
+
+// Admin sabit bilgileri
+define('ADMIN_EMAIL', 'tozarhiranur@gmail.com');
+define('ADMIN_PASSWORD', '123456');
+
+// JSON dosyasını kontrol et
 $users_file = 'users.json';
-$siparisler_file = 'siparisler.json';
-
-if(!file_exists($users_file)) {
+if (!file_exists($users_file)) {
     file_put_contents($users_file, json_encode([]));
 }
 
-if(!file_exists($siparisler_file)) {
-    file_put_contents($siparisler_file, json_encode([]));
+// Giriş kontrol fonksiyonu
+function isLoggedIn() {
+    return isset($_SESSION['user_id']) || (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true);
 }
 
-// Dil ayarı
-$dil = isset($_COOKIE['dil']) ? $_COOKIE['dil'] : 'tr';
-
-// Hangi formun gösterileceğini belirle
-$active_form = 'giris'; // Varsayılan: giriş formu
-
-if(isset($_GET['form'])) {
-    $form = $_GET['form'];
-    if(in_array($form, ['giris', 'kayit', 'forgot'])) {
-        $active_form = $form;
-    }
-}
-
-// CSRF token oluştur
-if(!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
-// Kullanıcı zaten giriş yapmışsa anasayfaya yönlendir
-if(isset($_SESSION['user_id']) && !isset($_GET['action'])) {
+// Eğer giriş yapmışsa anasayfaya yönlendir
+if (isLoggedIn() && !isset($_GET['action'])) {
     header('Location: anasayfa.php');
     exit;
 }
+
+// Hangi giriş türü
+$login_type = isset($_GET['type']) && $_GET['type'] == 'admin' ? 'admin' : 'normal';
+$is_register = isset($_GET['form']) && $_GET['form'] == 'kayit';
+
+// Dil metinleri
+$text_selected = [
+    'giris' => $dil == 'tr' ? 'Giriş Yap' : 'Login',
+    'uye_ol' => $dil == 'tr' ? 'Üye Ol' : 'Register',
+    'email' => $dil == 'tr' ? 'E-posta' : 'Email',
+    'sifre' => $dil == 'tr' ? 'Şifre' : 'Password',
+    'ad_soyad' => $dil == 'tr' ? 'Ad Soyad' : 'Full Name',
+    'tel' => $dil == 'tr' ? 'Telefon' : 'Phone',
+    'adres' => $dil == 'tr' ? 'Adres' : 'Address'
+];
 
 // Mesaj fonksiyonu
 function setMessage($type, $text) {
     $_SESSION['auth_message'] = ['type' => $type, 'text' => $text];
 }
 
-// CSRF token kontrolü
-function validateCsrfToken() {
-    global $dil;
-    if(!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-        setMessage('error', $dil == 'tr' ? 'Güvenlik hatası! Lütfen tekrar deneyin.' : 'Security error! Please try again.');
-        return false;
-    }
-    return true;
-}
-
-// Kullanıcı doğrulama
-function validateUserData($data, $is_register = false) {
-    global $dil, $users_file;
-    
-    $errors = [];
-    
-    if($is_register) {
-        // Kayıt için gerekli alanlar
-        $required = ['ad_soyad', 'email', 'sifre', 'sifre_tekrar', 'telefon'];
-        
-        foreach($required as $field) {
-            if(empty(trim($data[$field] ?? ''))) {
-                $field_names = [
-                    'tr' => ['ad_soyad' => 'Ad Soyad', 'email' => 'E-posta', 'sifre' => 'Şifre', 'sifre_tekrar' => 'Şifre Tekrar', 'telefon' => 'Telefon'],
-                    'en' => ['ad_soyad' => 'Full Name', 'email' => 'Email', 'sifre' => 'Password', 'sifre_tekrar' => 'Confirm Password', 'telefon' => 'Phone']
-                ];
-                $errors[] = ($dil == 'tr' ? 'Bu alan gereklidir: ' : 'This field is required: ') . $field_names[$dil][$field];
-            }
-        }
-        
-        // Şifre kontrolü
-        if($data['sifre'] !== $data['sifre_tekrar']) {
-            $errors[] = $dil == 'tr' ? 'Şifreler eşleşmiyor!' : 'Passwords do not match!';
-        }
-        
-        if(strlen($data['sifre']) < 6) {
-            $errors[] = $dil == 'tr' ? 'Şifre en az 6 karakter olmalı!' : 'Password must be at least 6 characters!';
-        }
-        
-        // Email formatı
-        if(!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            $errors[] = $dil == 'tr' ? 'Geçerli bir email adresi girin!' : 'Please enter a valid email address!';
-        }
-        
-        // Telefon formatı
-        $phone = preg_replace('/[^0-9]/', '', $data['telefon']);
-        if(strlen($phone) < 10) {
-            $errors[] = $dil == 'tr' ? 'Geçerli bir telefon numarası girin!' : 'Please enter a valid phone number!';
-        }
-        
-        // Email kontrolü
-        $users = json_decode(file_get_contents($users_file), true);
-        $email = strtolower(trim($data['email']));
-        
-        foreach($users as $user) {
-            if(strtolower($user['email']) === $email) {
-                $errors[] = $dil == 'tr' ? 'Bu email adresi zaten kayıtlı!' : 'This email is already registered!';
-                break;
-            }
-        }
-    } else {
-        // Giriş için gerekli alanlar
-        if(empty(trim($data['email'] ?? ''))) {
-            $errors[] = $dil == 'tr' ? 'E-posta adresi gereklidir!' : 'Email address is required!';
-        }
-        
-        if(empty(trim($data['sifre'] ?? ''))) {
-            $errors[] = $dil == 'tr' ? 'Şifre gereklidir!' : 'Password is required!';
-        }
-    }
-    
-    return $errors;
-}
-
-// Kullanıcı kaydı
-if(isset($_POST['action']) && $_POST['action'] == 'kayit') {
-    if(!validateCsrfToken()) {
-        header('Location: auth.php?form=kayit');
-        exit;
-    }
-    
-    $errors = validateUserData($_POST, true);
-    
-    if(!empty($errors)) {
-        setMessage('error', implode('<br>', $errors));
-        header('Location: auth.php?form=kayit');
-        exit;
+// KULLANICI KONTROL FONKSİYONLARI
+function getUserByEmail($email) {
+    global $users_file;
+    if (!file_exists($users_file)) {
+        return null;
     }
     
     $users = json_decode(file_get_contents($users_file), true);
+    if (!$users || !is_array($users)) {
+        return null;
+    }
     
-    // Yeni kullanıcı oluştur
+    foreach ($users as $user) {
+        if (strtolower($user['email']) === strtolower($email)) {
+            return $user;
+        }
+    }
+    return null;
+}
+
+function checkUserExists($email) {
+    return getUserByEmail($email) !== null;
+}
+
+// ŞİFRE DOĞRULAMA FONKSİYONU
+function verifyPassword($input_password, $stored_password) {
+    // Eğer stored_password hash'li ise
+    if (password_verify($input_password, $stored_password)) {
+        return true;
+    }
+    
+    // Eğer stored_password plain text ise
+    if ($input_password === $stored_password) {
+        return true;
+    }
+    
+    return false;
+}
+
+// NORMAL GİRİŞ
+if (isset($_POST['action']) && $_POST['action'] == 'giris_normal') {
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $sifre = $_POST['sifre'] ?? '';
+    
+    if (empty($email) || empty($sifre)) {
+        setMessage('error', 'Email ve şifre gereklidir!');
+        header('Location: auth.php');
+        exit;
+    }
+    
+    // Kullanıcıyı bul
+    $user = getUserByEmail($email);
+    
+    if (!$user) {
+        setMessage('error', 'Bu email ile kayıtlı kullanıcı bulunamadı!');
+        header('Location: auth.php');
+        exit;
+    }
+    
+    // Şifre kontrolü
+    if (!verifyPassword($sifre, $user['sifre'])) {
+        setMessage('error', 'Hatalı şifre!');
+        header('Location: auth.php');
+        exit;
+    }
+    
+    // Giriş başarılı
+    $_SESSION['user_id'] = $user['id'];
+    $_SESSION['ad_soyad'] = $user['ad_soyad'];
+    $_SESSION['email'] = $user['email'];
+    $_SESSION['puan'] = $user['puan'] ?? 0;
+    
+    setMessage('success', 'Başarıyla giriş yaptınız!');
+    header('Location: anasayfa.php');
+    exit;
+}
+
+// ADMIN GİRİŞ
+if (isset($_POST['action']) && $_POST['action'] == 'giris_admin') {
+    $email = trim($_POST['email'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+    
+    if (empty($email) || empty($password)) {
+        setMessage('error', 'Email ve şifre gereklidir!');
+        header('Location: auth.php?type=admin');
+        exit;
+    }
+    
+    // Admin kontrolü
+    if ($email === ADMIN_EMAIL && $password === ADMIN_PASSWORD) {
+        $_SESSION['admin_logged_in'] = true;
+        $_SESSION['admin_email'] = $email;
+        
+        setMessage('success', 'Admin olarak başarıyla giriş yapıldı!');
+        header('Location: anasayfa.php');
+        exit;
+    } else {
+        setMessage('error', 'Hatalı admin bilgileri!');
+        header('Location: auth.php?type=admin');
+        exit;
+    }
+}
+
+// KAYIT İŞLEMİ (ÜYE OL)
+if (isset($_POST['action']) && $_POST['action'] == 'kayit') {
+    $ad_soyad = trim($_POST['ad_soyad'] ?? '');
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $sifre = $_POST['sifre'] ?? '';
+    $telefon = trim($_POST['telefon'] ?? '');
+    
+    if (empty($ad_soyad) || empty($email) || empty($sifre) || empty($telefon)) {
+        setMessage('error', 'Tüm alanları doldurun!');
+        header('Location: auth.php?form=kayit');
+        exit;
+    }
+    
+    // Email format kontrolü
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        setMessage('error', 'Geçerli bir email adresi girin!');
+        header('Location: auth.php?form=kayit');
+        exit;
+    }
+    
+    // Şifre uzunluk kontrolü
+    if (strlen($sifre) < 6) {
+        setMessage('error', 'Şifre en az 6 karakter olmalıdır!');
+        header('Location: auth.php?form=kayit');
+        exit;
+    }
+    
+    // Email kontrolü
+    if (checkUserExists($email)) {
+        setMessage('error', 'Bu email zaten kayıtlı! Lütfen giriş yapın.');
+        header('Location: auth.php');
+        exit;
+    }
+    
+    $users = [];
+    if (file_exists($users_file)) {
+        $users = json_decode(file_get_contents($users_file), true);
+        if (!$users || !is_array($users)) {
+            $users = [];
+        }
+    }
+    
+    // Yeni kullanıcı
     $new_user = [
-        'id' => uniqid('user_', true),
-        'ad_soyad' => htmlspecialchars(trim($_POST['ad_soyad'])),
-        'email' => strtolower(trim($_POST['email'])),
-        'sifre' => password_hash($_POST['sifre'], PASSWORD_DEFAULT),
-        'telefon' => htmlspecialchars(trim($_POST['telefon'])),
-        'adres' => htmlspecialchars(trim($_POST['adres'] ?? '')),
-        'cinsiyet' => htmlspecialchars(trim($_POST['cinsiyet'] ?? '')),
-        'dogum_tarihi' => htmlspecialchars(trim($_POST['dogum_tarihi'] ?? '')),
-        'bulten' => isset($_POST['bulten']) ? true : false,
+        'id' => 'user_' . uniqid(),
+        'ad_soyad' => $ad_soyad,
+        'email' => $email,
+        'sifre' => password_hash($sifre, PASSWORD_DEFAULT),
+        'telefon' => $telefon,
+        'adres' => $_POST['adres'] ?? '',
         'kayit_tarihi' => date('Y-m-d H:i:s'),
-        'son_giris' => date('Y-m-d H:i:s'),
-        'aktif' => true,
-        'avatar' => 'default.png',
         'puan' => 100
     ];
     
     $users[] = $new_user;
     file_put_contents($users_file, json_encode($users, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     
-    // Oturumu başlat
     $_SESSION['user_id'] = $new_user['id'];
     $_SESSION['ad_soyad'] = $new_user['ad_soyad'];
     $_SESSION['email'] = $new_user['email'];
-    $_SESSION['telefon'] = $new_user['telefon'];
-    $_SESSION['adres'] = $new_user['adres'];
-    $_SESSION['puan'] = $new_user['puan'];
+    $_SESSION['puan'] = 100;
     
-    setMessage('success', $dil == 'tr' ? 'Başarıyla kayıt oldunuz! 100 hoş geldin puanı kazandınız.' : 'Registration successful! You earned 100 welcome points.');
+    setMessage('success', 'Başarıyla kayıt oldunuz! 100 hoş geldin puanı kazandınız.');
     header('Location: anasayfa.php');
     exit;
 }
 
-// Kullanıcı girişi
-if(isset($_POST['action']) && $_POST['action'] == 'giris') {
-    if(!validateCsrfToken()) {
-        header('Location: auth.php');
-        exit;
-    }
-    
-    $errors = validateUserData($_POST, false);
-    
-    if(!empty($errors)) {
-        setMessage('error', implode('<br>', $errors));
-        header('Location: auth.php');
-        exit;
-    }
-    
-    $users = json_decode(file_get_contents($users_file), true);
-    $email = strtolower(trim($_POST['email']));
-    $sifre = $_POST['sifre'];
-    $user_found = false;
-    
-    foreach($users as $user) {
-        if(strtolower($user['email']) === $email) {
-            $user_found = true;
-            
-            if(password_verify($sifre, $user['sifre'])) {
-                if(!($user['aktif'] ?? true)) {
-                    setMessage('error', $dil == 'tr' ? 'Hesabınız askıya alınmış!' : 'Your account is suspended!');
-                    header('Location: auth.php');
-                    exit;
-                }
-                
-                // Oturumu başlat
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['ad_soyad'] = $user['ad_soyad'];
-                $_SESSION['email'] = $user['email'];
-                $_SESSION['telefon'] = $user['telefon'] ?? '';
-                $_SESSION['adres'] = $user['adres'] ?? '';
-                $_SESSION['puan'] = $user['puan'] ?? 0;
-                
-                // Son giriş tarihini güncelle
-                $user['son_giris'] = date('Y-m-d H:i:s');
-                $updated_users = array_map(function($u) use ($user) {
-                    return $u['id'] === $user['id'] ? $user : $u;
-                }, $users);
-                file_put_contents($users_file, json_encode($updated_users, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-                
-                setMessage('success', $dil == 'tr' ? 'Başarıyla giriş yaptınız!' : 'Login successful!');
-                header('Location: anasayfa.php');
-                exit;
-            }
-        }
-    }
-    
-    if($user_found) {
-        setMessage('error', $dil == 'tr' ? 'Şifre hatalı!' : 'Invalid password!');
-    } else {
-        setMessage('error', $dil == 'tr' ? 'Bu email adresi ile kayıtlı kullanıcı bulunamadı!' : 'No user found with this email address!');
-    }
-    
-    header('Location: auth.php');
-    exit;
-}
-
-// Şifremi unuttum
-if(isset($_POST['action']) && $_POST['action'] == 'sifremi_unuttum') {
-    if(!validateCsrfToken()) {
-        header('Location: auth.php?form=forgot');
-        exit;
-    }
-    
-    $email = strtolower(trim($_POST['email'] ?? ''));
-    
-    if(empty($email)) {
-        setMessage('error', $dil == 'tr' ? 'Email adresinizi girin!' : 'Please enter your email address!');
-        header('Location: auth.php?form=forgot');
-        exit;
-    }
-    
-    $users = json_decode(file_get_contents($users_file), true);
-    $user_found = false;
-    
-    foreach($users as &$user) {
-        if(strtolower($user['email']) === $email) {
-            $user_found = true;
-            
-            // Geçici şifre oluştur
-            $temp_password = substr(md5(uniqid()), 0, 8);
-            $user['sifre'] = password_hash($temp_password, PASSWORD_DEFAULT);
-            
-            setMessage('info', $dil == 'tr' 
-                ? "Geçici şifreniz: <strong>$temp_password</strong><br>Lütfen giriş yaptıktan sonra şifrenizi değiştirin." 
-                : "Your temporary password: <strong>$temp_password</strong><br>Please change your password after login.");
-            break;
-        }
-    }
-    
-    if($user_found) {
-        file_put_contents($users_file, json_encode($users, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-    } else {
-        setMessage('error', $dil == 'tr' ? 'Bu email adresi ile kayıtlı kullanıcı bulunamadı!' : 'No user found with this email address!');
-    }
-    
-    header('Location: auth.php?form=forgot');
-    exit;
-}
-
-// Çıkış yap
-if(isset($_GET['action']) && $_GET['action'] == 'cikis') {
+// ÇIKIŞ
+if (isset($_GET['action']) && $_GET['action'] == 'cikis') {
     session_destroy();
-    setMessage('success', $dil == 'tr' ? 'Başarıyla çıkış yaptınız!' : 'Logout successful!');
+    setMessage('success', 'Başarıyla çıkış yaptınız!');
     header('Location: anasayfa.php');
     exit;
 }
@@ -285,7 +233,7 @@ if(isset($_GET['action']) && $_GET['action'] == 'cikis') {
 // Mesajları al
 $message = '';
 $message_type = '';
-if(isset($_SESSION['auth_message'])) {
+if (isset($_SESSION['auth_message'])) {
     $message = $_SESSION['auth_message']['text'];
     $message_type = $_SESSION['auth_message']['type'];
     unset($_SESSION['auth_message']);
@@ -293,14 +241,16 @@ if(isset($_SESSION['auth_message'])) {
 ?>
 
 <!DOCTYPE html>
-<html lang="<?php echo $dil; ?>">
+<html lang="<?php echo $dil; ?>" data-theme="<?php echo $tema; ?>">
 <head>
+    <title>ÇiçekBahçesi - <?php echo $login_type == 'admin' ? 'Admin Giriş' : ($is_register ? 'Üye Ol' : 'Giriş Yap'); ?></title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ÇiçekBahçesi - <?php echo $active_form == 'giris' ? ($dil == 'tr' ? 'Giriş Yap' : 'Login') : ($dil == 'tr' ? 'Üye Ol' : 'Register'); ?></title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Dancing+Script:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        /* Auth.php Özel Stilleri */
+        /* TEMEL STİLLER */
         * {
             margin: 0;
             padding: 0;
@@ -308,737 +258,653 @@ if(isset($_SESSION['auth_message'])) {
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f9f5 0%, #e8f5e9 100%);
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #fff5f7 0%, #ffeef2 100%);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        
-        /* Header - header.php ile aynı */
-        header {
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-            color: white;
-            padding: 15px 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            font-size: 28px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-        }
-        
-        .logo a {
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-        }
-        
-        .logo span {
-            color: #ffeb3b;
-            margin-left: 5px;
-        }
-        
-        .logo-icon {
-            font-size: 32px;
-            margin-right: 10px;
-        }
-        
-        nav ul {
-            display: flex;
-            list-style: none;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        nav ul li a {
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s;
-            padding: 8px 12px;
-            border-radius: 5px;
-        }
-        
-        nav ul li a:hover {
-            color: #ffeb3b;
-            background-color: rgba(255,255,255,0.1);
-        }
-        
-        /* Auth Container */
-        .auth-container {
-            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 20px;
+            color: #333;
         }
         
-        .auth-box {
+        /* ANA SAYFA DÖNÜŞ BUTONU */
+        .home-return {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        
+        .home-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .home-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        /* AUTH CONTAINER */
+        .auth-container {
             width: 100%;
             max-width: 500px;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(255, 107, 157, 0.15);
             overflow: hidden;
             animation: fadeIn 0.6s ease-out;
         }
         
+        /* HEADER */
         .auth-header {
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-            color: white;
-            padding: 30px;
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            padding: 40px 30px;
             text-align: center;
+            color: white;
             position: relative;
             overflow: hidden;
         }
         
         .auth-header::before {
-            content: '🌸🌹🌷💐🌺🌻';
+            content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            font-size: 40px;
-            opacity: 0.1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1%, transparent 20%);
+            animation: rotate 20s linear infinite;
         }
         
-        .auth-header h1 {
-            font-size: 2.2rem;
+        .auth-logo {
+            font-size: 48px;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 2;
+            animation: bounce 2s infinite;
+        }
+        
+        .auth-title {
+            font-family: 'Dancing Script', cursive;
+            font-size: 36px;
+            font-weight: 700;
             margin-bottom: 10px;
             position: relative;
-            z-index: 1;
+            z-index: 2;
         }
         
-        /* Tab'lar - Sadece 2 tab */
-        .auth-tabs {
-            display: flex;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            margin-top: 20px;
+        .auth-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
             position: relative;
-            z-index: 1;
+            z-index: 2;
         }
         
-        .auth-tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s;
-            border-radius: 8px;
-            border: none;
-            background: none;
-            cursor: pointer;
-        }
-        
-        .auth-tab:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        
-        .auth-tab.active {
-            background: white;
-            color: #2e7d32;
-        }
-        
-        /* Form İçeriği */
+        /* CONTENT */
         .auth-content {
-            padding: 40px;
+            padding: 40px 30px;
         }
         
-        /* Mesajlar */
+        /* MESSAGE */
         .message {
-            padding: 15px;
+            padding: 12px 15px;
             border-radius: 10px;
             margin-bottom: 25px;
-            font-weight: 500;
-            animation: slideIn 0.5s ease-out;
-        }
-        
-        .message.error {
-            background: #ffebee;
-            color: #c62828;
-            border: 1px solid #ffcdd2;
+            text-align: center;
+            animation: slideIn 0.3s ease-out;
+            font-size: 14px;
         }
         
         .message.success {
             background: #e8f5e9;
             color: #2e7d32;
-            border: 1px solid #c8e6c9;
+            border-left: 4px solid #4CAF50;
         }
         
-        .message.info {
-            background: #e3f2fd;
-            color: #1565c0;
-            border: 1px solid #bbdefb;
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
         }
         
-        /* Form Stilleri */
-        .auth-form {
-            display: none;
+        /* TABS */
+        .auth-tabs {
+            display: flex;
+            background: #f5f5f5;
+            padding: 6px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            position: relative;
         }
         
-        .auth-form.active {
-            display: block;
-            animation: fadeIn 0.5s ease-out;
+        .tab-slider {
+            position: absolute;
+            background: white;
+            height: calc(100% - 12px);
+            border-radius: 8px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: calc(50% - 6px);
+            box-shadow: 0 4px 12px rgba(255, 107, 157, 0.2);
         }
         
+        .auth-tab {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #666;
+            padding: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            position: relative;
+            z-index: 1;
+            font-size: 15px;
+        }
+        
+        .auth-tab.active {
+            color: #ff6b9d;
+        }
+        
+        /* FORMS */
+        .form-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .form-page {
+            width: 100%;
+            opacity: 1;
+            transform: translateX(0);
+            transition: all 0.4s ease;
+        }
+        
+        .form-page.hidden {
+            opacity: 0;
+            transform: translateX(100%);
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        
+        /* FORM ELEMENTS */
         .form-group {
             margin-bottom: 20px;
         }
         
-        label {
+        .form-label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #444;
-            font-size: 0.95rem;
+            color: #555;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        .required::after {
-            content: ' *';
-            color: #e53935;
-        }
-        
-        input, textarea, select {
+        .form-input {
             width: 100%;
             padding: 14px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid #f0f0f0;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 15px;
             transition: all 0.3s;
-            font-family: inherit;
+            font-family: 'Poppins', sans-serif;
         }
         
-        input:focus, textarea:focus, select:focus {
+        .form-input:focus {
             outline: none;
-            border-color: #2e7d32;
-            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+            border-color: #ff6b9d;
+            box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
         }
         
-        .password-wrapper {
-            position: relative;
-        }
-        
-        .toggle-password {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 5px;
-        }
-        
-        .form-hint {
-            display: block;
-            margin-top: 5px;
-            font-size: 0.85rem;
-            color: #666;
-        }
-        
-        .form-row {
-            display: flex;
-            gap: 15px;
-        }
-        
-        .form-row .form-group {
-            flex: 1;
-        }
-        
-        /* Butonlar */
+        /* BUTTONS */
         .submit-btn {
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+            width: 100%;
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
             color: white;
             border: none;
             padding: 16px;
-            border-radius: 12px;
-            font-size: 18px;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            width: 100%;
+            font-family: 'Poppins', sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
+            margin-top: 10px;
         }
         
         .submit-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(46, 125, 50, 0.3);
+            box-shadow: 0 8px 20px rgba(255, 107, 157, 0.3);
         }
         
-        .submit-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        .submit-btn:active {
+            transform: translateY(0);
         }
         
+        .admin-btn {
+            background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+        }
+        
+        .admin-btn:hover {
+            box-shadow: 0 8px 20px rgba(211, 47, 47, 0.3);
+        }
+        
+        /* LINKS */
         .form-links {
             text-align: center;
             margin-top: 20px;
             color: #666;
-            font-size: 1rem;
+            font-size: 14px;
         }
         
-        .form-links a {
-            color: #2e7d32;
+        .form-link {
+            color: #ff6b9d;
             text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-block;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+        
+        .form-link:hover {
+            text-decoration: underline;
+            color: #ff4081;
+        }
+        
+        .admin-link {
+            color: #d32f2f;
             font-weight: 600;
         }
         
-        .form-links a:hover {
-            text-decoration: underline;
-        }
-        
-        /* Footer */
-        footer {
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-            color: white;
-            padding: 40px 0 20px;
-        }
-        
-        .footer-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 40px;
-            margin-bottom: 30px;
-        }
-        
-        .footer-section h3 {
-            margin-bottom: 20px;
-            color: #ffeb3b;
-            font-size: 20px;
-        }
-        
-        .footer-section ul {
-            list-style: none;
-        }
-        
-        .footer-section ul li {
-            margin-bottom: 10px;
-        }
-        
-        .footer-section ul li a {
-            color: white;
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-        
-        .footer-section ul li a:hover {
-            color: #ffeb3b;
-        }
-        
-        .copyright {
+        /* ADMIN NOTE */
+        .admin-note {
+            background: #fff3e0;
+            border: 1px solid #ffb74d;
+            border-radius: 8px;
+            padding: 12px;
             text-align: center;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            font-size: 14px;
-            opacity: 0.8;
+            margin-top: 25px;
+            color: #e65100;
+            font-size: 13px;
         }
         
-        /* Responsive */
-        @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            nav ul {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            
-            .auth-content {
-                padding: 30px;
-            }
-            
-            .form-row {
-                flex-direction: column;
-                gap: 0;
-            }
+        .admin-note i {
+            margin-right: 8px;
         }
         
+        /* FOOTER */
+        .auth-footer {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid #eee;
+            color: #888;
+            font-size: 12px;
+        }
+        
+        /* ANIMATIONS */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* RESPONSIVE */
         @media (max-width: 480px) {
-            .auth-header {
-                padding: 20px;
+            .home-return {
+                top: 10px;
+                left: 10px;
             }
             
-            .auth-header h1 {
-                font-size: 1.8rem;
+            .auth-container {
+                margin: 20px;
+            }
+            
+            .auth-header {
+                padding: 30px 20px;
+            }
+            
+            .auth-title {
+                font-size: 28px;
             }
             
             .auth-content {
-                padding: 20px;
+                padding: 30px 20px;
+            }
+            
+            .auth-logo {
+                font-size: 40px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="container header-content">
-            <div class="logo">
-                <a href="anasayfa.php">
-                    <span class="logo-icon">🌸</span>
-                    ÇiçekBahçesi<span>.</span>
-                </a>
-            </div>
-            <nav>
-                <ul>
-                    <li><a href="anasayfa.php"><?php echo $dil == 'tr' ? 'Ana Sayfa' : 'Home'; ?></a></li>
-                    <li><a href="urunler.php"><?php echo $dil == 'tr' ? 'Ürünler' : 'Products'; ?></a></li>
-                    <li><a href="iletisim.php"><?php echo $dil == 'tr' ? 'İletişim' : 'Contact'; ?></a></li>
-                    <?php if(isset($_SESSION['user_id'])): ?>
-                        <li><a href="profil.php"><?php echo $dil == 'tr' ? 'Profilim' : 'My Profile'; ?></a></li>
-                        <li><a href="auth.php?action=cikis"><?php echo $dil == 'tr' ? 'Çıkış Yap' : 'Logout'; ?></a></li>
-                    <?php else: ?>
-                        <li><a href="auth.php" style="background: #ffeb3b; color: #2e7d32; font-weight: bold; padding: 10px 20px;">
-                            <?php echo $dil == 'tr' ? 'Giriş Yap / Üye Ol' : 'Login / Register'; ?>
-                        </a></li>
-                    <?php endif; ?>
-                </ul>
-            </nav>
+    <!-- ANA SAYFA DÖNÜŞ BUTONU -->
+    <div class="home-return">
+        <a href="anasayfa.php" class="home-btn">
+            <i class="fas fa-home"></i>
+            Anasayfaya Dön
+        </a>
+    </div>
+    
+    <!-- AUTH CONTAINER -->
+    <div class="auth-container">
+        <!-- HEADER -->
+        <div class="auth-header">
+            <div class="auth-logo">🌸</div>
+            <h1 class="auth-title">
+                <?php if($login_type == 'admin'): ?>
+                    Admin Giriş
+                <?php elseif($is_register): ?>
+                    Üye Ol
+                <?php else: ?>
+                    Giriş Yap
+                <?php endif; ?>
+            </h1>
+            <p class="auth-subtitle">
+                <?php if($login_type == 'admin'): ?>
+                    Yetkili personel girişi
+                <?php elseif($is_register): ?>
+                    ÇiçekBahçesi'ne hoş geldiniz
+                <?php else: ?>
+                    Hesabınıza giriş yapın
+                <?php endif; ?>
+            </p>
         </div>
-    </header>
-
-    <!-- Auth Container -->
-    <div class="container">
-        <div class="auth-container">
-            <div class="auth-box">
-                <div class="auth-header">
-                    <h1 id="form-title">
-                        <?php if($active_form == 'giris'): ?>
-                            <?php echo $dil == 'tr' ? 'Giriş Yap' : 'Login'; ?>
-                        <?php elseif($active_form == 'kayit'): ?>
-                            <?php echo $dil == 'tr' ? 'Üye Ol' : 'Register'; ?>
-                        <?php else: ?>
-                            <?php echo $dil == 'tr' ? 'Şifremi Unuttum' : 'Forgot Password'; ?>
-                        <?php endif; ?>
-                    </h1>
+        
+        <!-- CONTENT -->
+        <div class="auth-content">
+            <?php if($message): ?>
+                <div class="message <?php echo $message_type; ?>">
+                    <?php echo $message; ?>
+                </div>
+            <?php endif; ?>
+            
+            <?php if($login_type == 'admin'): ?>
+                <!-- ADMIN LOGIN FORM -->
+                <form method="POST" action="auth.php?type=admin" id="adminForm">
+                    <input type="hidden" name="action" value="giris_admin">
                     
-                    <div class="auth-tabs">
-                        <button class="auth-tab <?php echo $active_form == 'giris' ? 'active' : ''; ?>" data-tab="giris">
-                            <?php echo $dil == 'tr' ? 'Giriş Yap' : 'Login'; ?>
-                        </button>
-                        <button class="auth-tab <?php echo $active_form == 'kayit' ? 'active' : ''; ?>" data-tab="kayit">
-                            <?php echo $dil == 'tr' ? 'Üye Ol' : 'Register'; ?>
-                        </button>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-envelope"></i> E-posta
+                        </label>
+                        <input type="email" name="email" class="form-input" placeholder="tozarhiranur@gmail.com" required>
                     </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-lock"></i> Şifre
+                        </label>
+                        <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+                    </div>
+                    
+                    <button type="submit" class="submit-btn admin-btn">
+                        <i class="fas fa-user-shield"></i>
+                        Admin Giriş Yap
+                    </button>
+                    
+                    <div class="form-links">
+                        <a href="auth.php" class="form-link">
+                            <i class="fas fa-arrow-left"></i> Kullanıcı Girişine Dön
+                        </a>
+                    </div>
+                </form>
+                
+                <div class="admin-note">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Sadece yetkili admin personel girebilir
                 </div>
                 
-                <div class="auth-content">
-                    <!-- Mesajlar -->
-                    <?php if($message): ?>
-                        <div class="message <?php echo $message_type; ?>"><?php echo $message; ?></div>
-                    <?php endif; ?>
-                    
-                    <!-- Giriş Formu -->
-                    <form method="POST" action="auth.php" class="auth-form <?php echo $active_form == 'giris' ? 'active' : ''; ?>" id="girisForm">
-                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                        <input type="hidden" name="action" value="giris">
-                        
-                        <div class="form-group">
-                            <label for="login_email" class="required"><?php echo $dil == 'tr' ? 'E-posta' : 'Email'; ?></label>
-                            <input type="email" id="login_email" name="email" 
-                                   placeholder="<?php echo $dil == 'tr' ? 'ornek@email.com' : 'example@email.com'; ?>" 
-                                   required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="login_sifre" class="required"><?php echo $dil == 'tr' ? 'Şifre' : 'Password'; ?></label>
-                            <div class="password-wrapper">
-                                <input type="password" id="login_sifre" name="sifre" 
-                                       placeholder="<?php echo $dil == 'tr' ? 'Şifrenizi girin' : 'Enter your password'; ?>" 
-                                       required>
-                                <button type="button" class="toggle-password" onclick="togglePassword('login_sifre')">👁️</button>
-                            </div>
-                            <div class="form-links" style="text-align: right; margin-top: 5px;">
-                                <a href="auth.php?form=forgot"><?php echo $dil == 'tr' ? 'Şifremi unuttum?' : 'Forgot password?'; ?></a>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="submit-btn">
-                            <?php echo $dil == 'tr' ? 'Giriş Yap' : 'Login'; ?>
+            <?php else: ?>
+                <!-- USER LOGIN/REGISTER -->
+                <?php if(!$is_register): ?>
+                    <!-- TABS -->
+                    <div class="auth-tabs" id="authTabs">
+                        <div class="tab-slider" id="tabSlider"></div>
+                        <button type="button" class="auth-tab active" data-tab="login" id="loginTab">
+                            Giriş Yap
                         </button>
-                        
-                        <div class="form-links">
-                            <?php echo $dil == 'tr' ? 'Hesabınız yok mu?' : 'Don\'t have an account?'; ?>
-                            <a href="#" onclick="switchTab('kayit')"><?php echo $dil == 'tr' ? 'Üye Olun' : 'Register'; ?></a>
-                        </div>
-                    </form>
-                    
-                    <!-- Üye Ol Formu -->
-                    <form method="POST" action="auth.php" class="auth-form <?php echo $active_form == 'kayit' ? 'active' : ''; ?>" id="kayitForm">
-                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                        <input type="hidden" name="action" value="kayit">
-                        
-                        <div class="form-group">
-                            <label for="ad_soyad" class="required"><?php echo $dil == 'tr' ? 'Ad Soyad' : 'Full Name'; ?></label>
-                            <input type="text" id="ad_soyad" name="ad_soyad" 
-                                   placeholder="<?php echo $dil == 'tr' ? 'Adınız ve soyadınız' : 'Your name and surname'; ?>" 
-                                   required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="email" class="required"><?php echo $dil == 'tr' ? 'E-posta' : 'Email'; ?></label>
-                            <input type="email" id="email" name="email" 
-                                   placeholder="<?php echo $dil == 'tr' ? 'ornek@email.com' : 'example@email.com'; ?>" 
-                                   required>
-                        </div>
-                        
-                        <div class="form-row">
+                        <button type="button" class="auth-tab" data-tab="register" id="registerTab">
+                            Üye Ol
+                        </button>
+                    </div>
+                <?php endif; ?>
+                
+                <!-- FORM WRAPPER -->
+                <div class="form-wrapper">
+                    <!-- LOGIN FORM -->
+                    <div class="form-page <?php echo $is_register ? 'hidden' : ''; ?>" id="loginPage">
+                        <form method="POST" action="auth.php" id="loginForm">
+                            <input type="hidden" name="action" value="giris_normal">
+                            
                             <div class="form-group">
-                                <label for="sifre" class="required"><?php echo $dil == 'tr' ? 'Şifre' : 'Password'; ?></label>
-                                <div class="password-wrapper">
-                                    <input type="password" id="sifre" name="sifre" 
-                                           placeholder="<?php echo $dil == 'tr' ? 'En az 6 karakter' : 'At least 6 characters'; ?>" 
-                                           minlength="6" required>
-                                    <button type="button" class="toggle-password" onclick="togglePassword('sifre')">👁️</button>
-                                </div>
+                                <label class="form-label">
+                                    <i class="fas fa-envelope"></i> E-posta
+                                </label>
+                                <input type="email" name="email" class="form-input" placeholder="ornek@email.com" required>
                             </div>
                             
                             <div class="form-group">
-                                <label for="sifre_tekrar" class="required"><?php echo $dil == 'tr' ? 'Şifre Tekrar' : 'Confirm Password'; ?></label>
-                                <div class="password-wrapper">
-                                    <input type="password" id="sifre_tekrar" name="sifre_tekrar" 
-                                           placeholder="<?php echo $dil == 'tr' ? 'Şifrenizi tekrar girin' : 'Re-enter your password'; ?>" 
-                                           minlength="6" required>
-                                    <button type="button" class="toggle-password" onclick="togglePassword('sifre_tekrar')">👁️</button>
-                                </div>
+                                <label class="form-label">
+                                    <i class="fas fa-lock"></i> Şifre
+                                </label>
+                                <input type="password" name="sifre" class="form-input" placeholder="••••••••" required>
                             </div>
-                        </div>
+                            
+                            <button type="submit" class="submit-btn">
+                                <i class="fas fa-sign-in-alt"></i>
+                                Giriş Yap
+                            </button>
+                        </form>
                         
-                        <div class="form-group">
-                            <label for="telefon" class="required"><?php echo $dil == 'tr' ? 'Telefon' : 'Phone'; ?></label>
-                            <input type="tel" id="telefon" name="telefon" 
-                                   placeholder="<?php echo $dil == 'tr' ? '5xx xxx xx xx' : '5xx xxx xx xx'; ?>" 
-                                   required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" name="kvkk" required style="width: auto;">
-                                <span style="font-size: 0.9rem; color: #666;">
-                                    <?php echo $dil == 'tr' 
-                                        ? 'KVKK\'yı kabul ediyorum.' 
-                                        : 'I accept the privacy policy.'; ?>
-                                </span>
-                            </label>
-                        </div>
-                        
-                        <button type="submit" class="submit-btn">
-                            <?php echo $dil == 'tr' ? 'Üye Ol' : 'Register'; ?>
-                        </button>
-                        
-                        <div class="form-links">
-                            <?php echo $dil == 'tr' ? 'Zaten hesabınız var mı?' : 'Already have an account?'; ?>
-                            <a href="#" onclick="switchTab('giris')"><?php echo $dil == 'tr' ? 'Giriş Yapın' : 'Login'; ?></a>
-                        </div>
-                    </form>
+                        <?php if(!$is_register): ?>
+                            <div class="form-links">
+                                <a href="auth.php?type=admin" class="form-link admin-link">
+                                    <i class="fas fa-user-shield"></i> Admin Girişi
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                     
-                    <!-- Şifremi Unuttum Formu -->
-                    <form method="POST" action="auth.php" class="auth-form <?php echo $active_form == 'forgot' ? 'active' : ''; ?>" id="forgotForm" style="display: <?php echo $active_form == 'forgot' ? 'block' : 'none'; ?>;">
-                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                        <input type="hidden" name="action" value="sifremi_unuttum">
+                    <!-- REGISTER FORM -->
+                    <div class="form-page <?php echo !$is_register ? 'hidden' : ''; ?>" id="registerPage">
+                        <form method="POST" action="auth.php?form=kayit" id="registerForm">
+                            <input type="hidden" name="action" value="kayit">
+                            
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-user"></i> Ad Soyad
+                                </label>
+                                <input type="text" name="ad_soyad" class="form-input" placeholder="Adınız Soyadınız" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-envelope"></i> E-posta
+                                </label>
+                                <input type="email" name="email" class="form-input" placeholder="ornek@email.com" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-lock"></i> Şifre
+                                </label>
+                                <input type="password" name="sifre" class="form-input" placeholder="En az 6 karakter" required minlength="6">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-phone"></i> Telefon
+                                </label>
+                                <input type="tel" name="telefon" class="form-input" placeholder="5xx xxx xx xx" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-map-marker-alt"></i> Adres
+                                </label>
+                                <input type="text" name="adres" class="form-input" placeholder="Teslimat adresiniz">
+                            </div>
+                            
+                            <button type="submit" class="submit-btn">
+                                <i class="fas fa-user-plus"></i>
+                                Üye Ol
+                            </button>
+                        </form>
                         
-                        <div class="form-group">
-                            <label for="forgot_email" class="required"><?php echo $dil == 'tr' ? 'E-posta' : 'Email'; ?></label>
-                            <input type="email" id="forgot_email" name="email" 
-                                   placeholder="<?php echo $dil == 'tr' ? 'ornek@email.com' : 'example@email.com'; ?>" 
-                                   required>
-                            <span class="form-hint">
-                                <?php echo $dil == 'tr' 
-                                    ? 'E-posta adresinize şifre sıfırlama bağlantısı göndereceğiz.' 
-                                    : 'We will send a password reset link to your email address.'; ?>
-                            </span>
-                        </div>
-                        
-                        <button type="submit" class="submit-btn">
-                            <?php echo $dil == 'tr' ? 'Şifre Sıfırla' : 'Reset Password'; ?>
-                        </button>
-                        
-                        <div class="form-links">
-                            <a href="#" onclick="switchTab('giris')"><?php echo $dil == 'tr' ? 'Giriş Sayfasına Dön' : 'Back to Login'; ?></a>
-                        </div>
-                    </form>
+                        <?php if(!$is_register): ?>
+                            <div class="form-links">
+                                <span>Zaten hesabınız var mı?</span>
+                                <a href="javascript:void(0)" class="form-link" id="goToLoginLink">
+                                    Giriş yapın
+                                </a>
+                            </div>
+                        <?php else: ?>
+                            <div class="form-links">
+                                <a href="auth.php" class="form-link">
+                                    <i class="fas fa-arrow-left"></i> Giriş sayfasına dön
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
+            <?php endif; ?>
+            
+            <!-- FOOTER -->
+            <div class="auth-footer">
+                <i class="fas fa-lock"></i> Güvenli bağlantı
             </div>
         </div>
     </div>
-
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>ÇiçekBahçesi</h3>
-                    <p><?php echo $dil == 'tr' ? 'En güzel çiçekler, en taze aranjmanlar için doğru adres.' : 'The right address for the most beautiful flowers and freshest arrangements.'; ?></p>
-                </div>
-                <div class="footer-section">
-                    <h3><?php echo $dil == 'tr' ? 'Hızlı Bağlantılar' : 'Quick Links'; ?></h3>
-                    <ul>
-                        <li><a href="anasayfa.php"><?php echo $dil == 'tr' ? 'Ana Sayfa' : 'Home'; ?></a></li>
-                        <li><a href="urunler.php"><?php echo $dil == 'tr' ? 'Ürünlerimiz' : 'Our Products'; ?></a></li>
-                        <li><a href="iletisim.php"><?php echo $dil == 'tr' ? 'İletişim' : 'Contact'; ?></a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3><?php echo $dil == 'tr' ? 'Müşteri Hizmetleri' : 'Customer Service'; ?></h3>
-                    <ul>
-                        <li><a href="sikca-sorulan-sorular.php"><?php echo $dil == 'tr' ? 'SSS' : 'FAQ'; ?></a></li>
-                        <li><a href="teslimat-bilgileri.php"><?php echo $dil == 'tr' ? 'Teslimat Bilgileri' : 'Delivery Info'; ?></a></li>
-                        <li><a href="iptal-iade.php"><?php echo $dil == 'tr' ? 'İptal & İade' : 'Cancel & Return'; ?></a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="copyright">
-                &copy; <?php echo date('Y'); ?> ÇiçekBahçesi. <?php echo $dil == 'tr' ? 'Tüm hakları saklıdır.' : 'All rights reserved.'; ?>
-            </div>
-        </div>
-    </footer>
-
+    
     <script>
-    // Sayfa yüklendiğinde aktif formu göster
-    document.addEventListener('DOMContentLoaded', function() {
-        const activeTab = "<?php echo $active_form; ?>";
-        
-        // Eğer "forgot" tab'ı aktifse, özel işlem yap
-        if(activeTab === 'forgot') {
-            document.querySelectorAll('.auth-form').forEach(form => {
-                form.classList.remove('active');
-                form.style.display = 'none';
-            });
-            document.getElementById('forgotForm').style.display = 'block';
-            document.getElementById('forgotForm').classList.add('active');
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginTab = document.getElementById('loginTab');
+            const registerTab = document.getElementById('registerTab');
+            const tabSlider = document.getElementById('tabSlider');
+            const loginPage = document.getElementById('loginPage');
+            const registerPage = document.getElementById('registerPage');
+            const goToLoginLink = document.getElementById('goToLoginLink');
             
-            // Tab başlığını güncelle
-            document.getElementById('form-title').textContent = "<?php echo $dil == 'tr' ? 'Şifremi Unuttum' : 'Forgot Password'; ?>";
-            
-            // Tab butonlarını gizle
-            document.querySelector('.auth-tabs').style.display = 'none';
-        } else {
-            // Normal tab işlemleri
-            document.querySelectorAll('.auth-tab').forEach(tab => {
-                tab.classList.remove('active');
-                if(tab.getAttribute('data-tab') === activeTab) {
-                    tab.classList.add('active');
-                }
-            });
-            
-            document.querySelectorAll('.auth-form').forEach(form => {
-                form.classList.remove('active');
-                form.style.display = 'none';
-            });
-            
-            const activeForm = document.getElementById(activeTab + 'Form');
-            if(activeForm) {
-                activeForm.classList.add('active');
-                activeForm.style.display = 'block';
+            // Tab switching for user login/register
+            if(loginTab && registerTab) {
+                loginTab.addEventListener('click', function() {
+                    switchToLogin();
+                });
+                
+                registerTab.addEventListener('click', function() {
+                    switchToRegister();
+                });
             }
-        }
-        
-        // Telefon formatı
-        const telefonInput = document.getElementById('telefon');
-        if(telefonInput) {
-            telefonInput.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length > 0) {
-                    value = value.substring(0, 10);
-                    let formatted = value.substring(0, 3);
-                    if (value.length > 3) formatted += ' ' + value.substring(3, 6);
-                    if (value.length > 6) formatted += ' ' + value.substring(6, 8);
-                    if (value.length > 8) formatted += ' ' + value.substring(8, 10);
-                    e.target.value = formatted;
+            
+            // Go to login link
+            if(goToLoginLink) {
+                goToLoginLink.addEventListener('click', function() {
+                    switchToLogin();
+                });
+            }
+            
+            function switchToLogin() {
+                if(tabSlider) {
+                    tabSlider.style.transform = 'translateX(0)';
                 }
-            });
-        }
-    });
-    
-    // Tab değiştirme fonksiyonu
-    function switchTab(tabName) {
-        // Tüm tab'ları deaktif et
-        document.querySelectorAll('.auth-tab').forEach(tab => {
-            tab.classList.remove('active');
-            if(tab.getAttribute('data-tab') === tabName) {
-                tab.classList.add('active');
+                if(loginTab && registerTab) {
+                    loginTab.classList.add('active');
+                    registerTab.classList.remove('active');
+                }
+                if(loginPage && registerPage) {
+                    loginPage.classList.remove('hidden');
+                    registerPage.classList.add('hidden');
+                }
+            }
+            
+            function switchToRegister() {
+                if(tabSlider) {
+                    tabSlider.style.transform = 'translateX(100%)';
+                }
+                if(loginTab && registerTab) {
+                    loginTab.classList.remove('active');
+                    registerTab.classList.add('active');
+                }
+                if(loginPage && registerPage) {
+                    loginPage.classList.add('hidden');
+                    registerPage.classList.remove('hidden');
+                }
+            }
+            
+            // Form validation
+            const registerForm = document.getElementById('registerForm');
+            if(registerForm) {
+                const passwordInput = registerForm.querySelector('input[name="sifre"]');
+                if(passwordInput) {
+                    passwordInput.addEventListener('blur', function() {
+                        if(this.value.length < 6 && this.value.length > 0) {
+                            this.style.borderColor = '#f44336';
+                            this.style.boxShadow = '0 0 0 3px rgba(244, 67, 54, 0.1)';
+                        } else {
+                            this.style.borderColor = '#f0f0f0';
+                            this.style.boxShadow = 'none';
+                        }
+                    });
+                }
+                
+                const emailInput = registerForm.querySelector('input[name="email"]');
+                if(emailInput) {
+                    emailInput.addEventListener('blur', function() {
+                        const email = this.value;
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if(email && !emailRegex.test(email)) {
+                            this.style.borderColor = '#f44336';
+                            this.style.boxShadow = '0 0 0 3px rgba(244, 67, 54, 0.1)';
+                        } else {
+                            this.style.borderColor = '#f0f0f0';
+                            this.style.boxShadow = 'none';
+                        }
+                    });
+                }
+            }
+            
+            // Auto-focus first input
+            const firstInput = document.querySelector('.form-input');
+            if(firstInput) {
+                firstInput.focus();
             }
         });
-        
-        // Tüm formları gizle
-        document.querySelectorAll('.auth-form').forEach(form => {
-            form.classList.remove('active');
-            form.style.display = 'none';
-        });
-        
-        // Aktif formu göster
-        const activeForm = document.getElementById(tabName + 'Form');
-        if(activeForm) {
-            activeForm.classList.add('active');
-            activeForm.style.display = 'block';
-        }
-        
-        // Başlığı güncelle
-        const titleMap = {
-            'giris': '<?php echo $dil == "tr" ? "Giriş Yap" : "Login"; ?>',
-            'kayit': '<?php echo $dil == "tr" ? "Üye Ol" : "Register"; ?>'
-        };
-        document.getElementById('form-title').textContent = titleMap[tabName];
-        
-        // Tab container'ı göster (forgot'tan geri dönüldüğünde)
-        document.querySelector('.auth-tabs').style.display = 'flex';
-    }
-    
-    // Tab butonlarına tıklama event'i
-    document.querySelectorAll('.auth-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            const tabName = this.getAttribute('data-tab');
-            switchTab(tabName);
-        });
-    });
-    
-    // Şifre göster/gizle
-    function togglePassword(fieldId) {
-        const field = document.getElementById(fieldId);
-        if(field) {
-            const type = field.type === 'password' ? 'text' : 'password';
-            field.type = type;
-        }
-    }
-    
-    // Şifremi unuttum linki için
-    const forgotLink = document.querySelector('a[href="auth.php?form=forgot"]');
-    if(forgotLink) {
-        forgotLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            window.location.href = 'auth.php?form=forgot';
-        });
-    }
     </script>
 </body>
 </html>

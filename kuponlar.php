@@ -1,6 +1,7 @@
 <?php
 require_once 'cicek.php';
 require_once 'header.php';
+
 if(!isset($_SESSION['giris'])) {
     echo '<div class="hosgeldin" style="text-align:center;">';
     echo '<h2>🎫 ' . $text['kuponlarim'] . '</h2>';
