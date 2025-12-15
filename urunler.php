@@ -15,7 +15,7 @@ $arama_kelimesi = isset($_GET['arama']) ? trim($_GET['arama']) : '';
 
 // Ürünleri getirme fonksiyonu
 function urunleriGetir($kategori = 'tumu', $arama = '') {
-    // Örnek ürün verileri
+    // Örnek ürün verileri - Simge ve kategori ekledim
     $urunler = [
         [
             'id' => 1,
@@ -24,6 +24,7 @@ function urunleriGetir($kategori = 'tumu', $arama = '') {
             'fiyat' => 129.99,
             'resim' => 'gul-buket.jpg',
             'kategori' => 'gul',
+            'simge' => '🌹',
             'stok' => 15,
             'indirim' => 10,
             'puan' => 4.8
@@ -35,6 +36,7 @@ function urunleriGetir($kategori = 'tumu', $arama = '') {
             'fiyat' => 199.99,
             'resim' => 'orkide.jpg',
             'kategori' => 'orkide',
+            'simge' => '💮',
             'stok' => 8,
             'indirim' => 0,
             'puan' => 4.9
@@ -46,6 +48,7 @@ function urunleriGetir($kategori = 'tumu', $arama = '') {
             'fiyat' => 89.99,
             'resim' => 'lale.jpg',
             'kategori' => 'lale',
+            'simge' => '🌷',
             'stok' => 20,
             'indirim' => 15,
             'puan' => 4.7
@@ -57,6 +60,7 @@ function urunleriGetir($kategori = 'tumu', $arama = '') {
             'fiyat' => 149.99,
             'resim' => 'dogum-gunu.jpg',
             'kategori' => 'buket',
+            'simge' => '💐',
             'stok' => 12,
             'indirim' => 5,
             'puan' => 4.6
@@ -68,6 +72,7 @@ function urunleriGetir($kategori = 'tumu', $arama = '') {
             'fiyat' => 69.99,
             'resim' => 'sukulent.jpg',
             'kategori' => 'sukulent',
+            'simge' => '🌵',
             'stok' => 25,
             'indirim' => 20,
             'puan' => 4.5
@@ -79,6 +84,7 @@ function urunleriGetir($kategori = 'tumu', $arama = '') {
             'fiyat' => 179.99,
             'resim' => 'pembe-gul.jpg',
             'kategori' => 'gul',
+            'simge' => '🌹',
             'stok' => 10,
             'indirim' => 0,
             'puan' => 4.8
@@ -90,6 +96,7 @@ function urunleriGetir($kategori = 'tumu', $arama = '') {
             'fiyat' => 249.99,
             'resim' => 'mor-orkide.jpg',
             'kategori' => 'orkide',
+            'simge' => '💮',
             'stok' => 5,
             'indirim' => 10,
             'puan' => 4.9
@@ -101,6 +108,7 @@ function urunleriGetir($kategori = 'tumu', $arama = '') {
             'fiyat' => 79.99,
             'resim' => 'sari-lale.jpg',
             'kategori' => 'lale',
+            'simge' => '🌷',
             'stok' => 18,
             'indirim' => 0,
             'puan' => 4.7
@@ -431,17 +439,7 @@ function favoriKontrol($urun_id) {
                     <div class="urun-card">
                         <!-- Ürün Resim Alanı -->
                         <div class="urun-resim">
-                            <?php 
-                            // Emoji ikonları
-                            $urun_emoji = [
-                                'gul' => '🌹',
-                                'orkide' => '💮',
-                                'lale' => '🌷',
-                                'buket' => '💐',
-                                'sukulent' => '🌵'
-                            ];
-                            echo $urun_emoji[$urun['kategori']] ?? '🌸';
-                            ?>
+                            <?php echo $urun['simge'] ?? '🌸'; ?>
                         </div>
                         
                         <!-- Ürün Bilgileri -->
@@ -480,9 +478,10 @@ function favoriKontrol($urun_id) {
                             
                             <!-- Butonlar -->
                             <div class="urun-actions">
-                                <a href="sepet.php?action=ekle&urun_id=<?php echo $urun['id']; ?>" 
+                                <!-- GÜNCELLENMİŞ: Sepete ekle linki -->
+                                <a href="sepet.php?action=ekle&urun_id=<?php echo $urun['id']; ?>&urun_ad=<?php echo urlencode($urun['ad']); ?>&urun_fiyat=<?php echo $urun['fiyat']; ?>&urun_simge=<?php echo urlencode($urun['simge']); ?>&urun_kategori=<?php echo $urun['kategori']; ?>" 
                                    class="btn-sepete-ekle"
-                                   onclick="return confirmAddToCart(<?php echo $urun['id']; ?>, '<?php echo addslashes($urun['ad']); ?>')">
+                                   onclick="return confirmAddToCart('<?php echo addslashes($urun['ad']); ?>')">
                                     <i class="fas fa-shopping-cart"></i> 
                                     <?php echo $dil == 'tr' ? 'Sepete Ekle' : 'Add to Cart'; ?>
                                 </a>
@@ -528,17 +527,11 @@ function favoriKontrol($urun_id) {
 
 <script>
 // Sepete ekle onayı
-function confirmAddToCart(productId, productName) {
-    <?php if(!$is_logged_in): ?>
-        alert('<?php echo $dil == 'tr' ? "Sepete ürün eklemek için giriş yapmalısınız!" : "You must login to add products to cart!" ?>');
-        window.location.href = 'auth.php';
-        return false;
-    <?php else: ?>
-        if(confirm(productName + ' <?php echo $dil == 'tr' ? "sepete eklensin mi?" : "add to cart?" ?>')) {
-            return true;
-        }
-        return false;
-    <?php endif; ?>
+function confirmAddToCart(productName) {
+    if(confirm(productName + ' <?php echo $dil == 'tr' ? "sepete eklensin mi?" : "add to cart?" ?>')) {
+        return true;
+    }
+    return false;
 }
 
 // Sayfa yüklendiğinde favori butonlarına click event'i ekle
@@ -546,8 +539,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Favori butonlarına tıklama
     document.querySelectorAll('.btn-favori').forEach(btn => {
         btn.addEventListener('click', function(e) {
-            // Giriş kontrolü yok - herkes favori ekleyebilir
-            // Sadece butonun aktif/pasif durumunu değiştir
             this.classList.toggle('active');
             
             // Butonun başlığını değiştir

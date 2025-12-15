@@ -459,12 +459,13 @@ $sayfa_adi = $sayfa_isimleri[$sayfa] ?? ucfirst($sayfa);
     </style>
     
     <script>
-    // GİRİŞ GEREKTİREN SAYFALAR İÇİN UYARI
+    // GİRİŞ GEREKTİREN SAYFALAR İÇİN UYARI (SADECE PROFİL İÇİN)
     function showLoginRequired(pageType) {
-        if(pageType === 'sepet' || pageType === 'profil') {
-            alert('Bu sayfayı görüntülemek için giriş yapmalısınız!');
+        if(pageType === 'profil') {
+            alert('Profilinizi görüntülemek için giriş yapmalısınız!');
             window.location.href = 'auth.php';
         }
+        // Sepet için artık uyarı göstermiyoruz - giriş yapmadan da sepet görüntülenebilir
     }
     
     // DİL DEĞİŞTİR
@@ -492,34 +493,6 @@ $sayfa_adi = $sayfa_isimleri[$sayfa] ?? ucfirst($sayfa);
         }
     });
     </script>
-    <script>
-// Favori sayacını güncelle (sayfa yenilendiğinde)
-document.addEventListener('DOMContentLoaded', function() {
-    const favoriCounter = document.querySelector('.favori-sayaci');
-    if(favoriCounter) {
-        // Session'dan favori sayısını al
-        fetch('get_favorites_count.php')
-            .then(response => response.json())
-            .then(data => {
-                if(data.count > 0) {
-                    favoriCounter.textContent = data.count;
-                    favoriCounter.style.display = 'inline-block';
-                } else {
-                    favoriCounter.style.display = 'none';
-                }
-            });
-    }
-});
-
-// Favori ekleme/çıkarma sonrası sayacı güncelle
-function updateFavoriteCounter() {
-    const counter = document.querySelector('.favori-sayaci');
-    if(counter) {
-        // Sayfayı yenile
-        location.reload();
-    }
-}
-</script>
 </head>
 <body>
     <!-- NAVBAR -->
@@ -593,8 +566,12 @@ function updateFavoriteCounter() {
                     <a href="urunler.php" class="nav-link">
                         <i class="fas fa-store"></i> <?php echo $text_selected['urunler']; ?>
                     </a>
-                    <a href="#" onclick="showLoginRequired('sepet')" class="nav-link">
+                    <!-- SEPET LİNKİ - GİRİŞ YAPMADAN DA GÖRÜNTÜLENEBİLİR -->
+                    <a href="sepet.php" class="nav-link">
                         <i class="fas fa-shopping-cart"></i> <?php echo $text_selected['sepet']; ?>
+                        <?php if(isset($_SESSION['sepet']) && count($_SESSION['sepet']) > 0): ?>
+                            <span class="sepet-sayaci"><?php echo count($_SESSION['sepet']); ?></span>
+                        <?php endif; ?>
                     </a>
                     <a href="favoriler.php" class="nav-link">
                         <i class="fas fa-heart"></i> <?php echo $text_selected['favoriler']; ?>
@@ -602,23 +579,28 @@ function updateFavoriteCounter() {
                             <span class="favori-sayaci"><?php echo count($_SESSION['favoriler']); ?></span>
                         <?php endif; ?>
                     </a>
-                    <a href="#" onclick="showLoginRequired('profil')" class="nav-link">
+                    <!-- PROFİL LİNKİ - GİRİŞ YAPMA SAYFASINA YÖNLENDİRİR -->
+                    <a href="auth.php" class="nav-link">
                         <i class="fas fa-user"></i> <?php echo $text_selected['profilim']; ?>
                     </a>
                     
+                    <!-- GİRİŞ YAP BUTONU -->
                     <a href="auth.php" class="auth-button">
                         <i class="fas fa-user"></i> <?php echo $text_selected['giris']; ?>
                     </a>
                     
+                    <!-- ADMIN GİRİŞ BUTONU -->
                     <a href="auth.php?type=admin" class="admin-button">
                         <i class="fas fa-user-shield"></i> Admin
                     </a>
                     
+                    <!-- DİL SEÇİCİ -->
                     <select class="dil-secici" onchange="dilDegistir(this.value)">
                         <option value="tr" <?php echo $dil == 'tr' ? 'selected' : ''; ?>>🇹🇷 TR</option>
                         <option value="en" <?php echo $dil == 'en' ? 'selected' : ''; ?>>🇺🇸 EN</option>
                     </select>
                     
+                    <!-- TEMA DEĞİŞTİRİCİ -->
                     <button class="tema-degistirici" onclick="temaDegistir()">
                         <?php echo $tema === 'light' ? '🌙' : '☀️'; ?>
                     </button>

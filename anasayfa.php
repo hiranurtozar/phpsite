@@ -714,6 +714,32 @@ $kategoriler = [
         margin-bottom: 20px;
     }
     
+    /* YORUM EKLE BUTONU STİLLERİ */
+    .yorum-ekle-header-btn {
+        display: flex;
+        align-items: center;
+    }
+    
+    .yorum-ekle-btn-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 25px;
+        background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+        color: white;
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+        box-shadow: 0 5px 15px rgba(255, 107, 157, 0.3);
+        font-size: 1rem;
+    }
+    
+    .yorum-ekle-btn-header:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255, 107, 157, 0.4);
+    }
+    
     /* ANIMATIONS */
     @keyframes fadeInUp {
         from {
@@ -802,6 +828,21 @@ $kategoriler = [
         
         .floating-flower {
             font-size: 18px;
+        }
+        
+        .yorum-ekle-header-btn {
+            margin-top: 10px;
+        }
+        
+        .yorum-ekle-baloncuk {
+            bottom: -15px;
+            right: 20px;
+        }
+        
+        .yorum-ekle-baloncuk-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
         }
     }
     
@@ -1121,7 +1162,7 @@ $kategoriler = [
         </form>
     </div>
 
-    <!-- MÜŞTERİ YORUMLARI -->
+        <!-- MÜŞTERİ YORUMLARI -->
     <div class="testimonials-section">
         <div class="section-header">
             <div>
@@ -1135,6 +1176,23 @@ $kategoriler = [
                         : 'Experiences of thousands of happy customers'; 
                     ?>
                 </p>
+            </div>
+            
+            <!-- YORUM EKLE BUTONU - HER ZAMAN GÖRÜNÜR -->
+            <div class="yorum-ekle-header-btn">
+                <?php if($is_logged_in): ?>
+                    <!-- Giriş yapmış kullanıcılar için -->
+                    <a href="yorumlar.php" class="yorum-ekle-btn-header">
+                        <i class="fas fa-plus-circle"></i>
+                        <?php echo $dil == 'tr' ? 'Yorum Ekle' : 'Add Review'; ?>
+                    </a>
+                <?php else: ?>
+                    <!-- Giriş yapmamış kullanıcılar için -->
+                    <a href="auth.php" class="yorum-ekle-btn-header">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <?php echo $dil == 'tr' ? 'Yorum Yap' : 'Write Review'; ?>
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
         
@@ -1207,6 +1265,23 @@ $kategoriler = [
                     </div>
                 </div>
             </div>
+        </div>
+
+    </div>
+        
+        <!-- YORUM EKLE BALONCUĞU -->
+        <div class="yorum-ekle-baloncuk">
+            <?php if($is_logged_in): ?>
+                <!-- Giriş yapmış kullanıcılar için -->
+                <a href="yorumlar.php" class="yorum-ekle-baloncuk-btn">
+                    <i class="fas fa-pen"></i>
+                </a>
+            <?php else: ?>
+                <!-- Giriş yapmamış kullanıcılar için -->
+                <a href="auth.php" class="yorum-ekle-baloncuk-btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 </div>

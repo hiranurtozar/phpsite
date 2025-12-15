@@ -1,10 +1,26 @@
 <?php
+// sepet.php
 require_once 'header.php';
 
-// Giriş kontrolü
-if (!$is_logged_in) {
-    echo '<script>showLoginRequired("sepet")</script>';
-    exit();
+// Dil ayarı
+$dil = isset($_COOKIE['dil']) ? $_COOKIE['dil'] : 'tr';
+
+// ÖNEMLİ: Ödeme kontrolünü EN BAŞTA yap
+if (isset($_GET['action']) && $_GET['action'] == 'odeme') {
+    if (!$is_logged_in) {
+        $_SESSION['message'] = $dil == 'tr' 
+            ? 'Ödeme yapmak için giriş yapmalısınız!' 
+            : 'You must login to make a payment!';
+        $_SESSION['message_type'] = 'info';
+        
+        // Giriş sayfasına yönlendir
+        header('Location: auth.php');
+        exit();
+    } else {
+        // Giriş yapmışsa ödeme sayfasına yönlendir
+        header('Location: odeme.php');
+        exit();
+    }
 }
 
 // Sepet işlemleri
@@ -13,7 +29,13 @@ if (isset($_GET['action']) && isset($_GET['urun_id'])) {
     $action = $_GET['action'];
     
     if ($action == 'ekle') {
-        // Ürünü sepete ekle
+        // GET parametrelerinden ürün bilgilerini al
+        $urun_ad = isset($_GET['urun_ad']) ? urldecode($_GET['urun_ad']) : "Ürün $urun_id";
+        $urun_fiyat = isset($_GET['urun_fiyat']) ? floatval($_GET['urun_fiyat']) : rand(50, 300);
+        $urun_simge = isset($_GET['urun_simge']) ? urldecode($_GET['urun_simge']) : '🌸';
+        $urun_kategori = isset($_GET['urun_kategori']) ? $_GET['urun_kategori'] : 'tumu';
+        
+        // Ürünü sepette ara
         $urun_bulundu = false;
         foreach ($_SESSION['sepet'] as $key => &$sepet_urun) {
             if (isset($sepet_urun['id']) && $sepet_urun['id'] == $urun_id) {
@@ -28,17 +50,21 @@ if (isset($_GET['action']) && isset($_GET['urun_id'])) {
         }
         
         if (!$urun_bulundu) {
-            // Örnek ürün bilgisi
+            // Tüm ürün bilgilerini kaydet
             $urun_bilgisi = [
                 'id' => $urun_id,
-                'ad' => "Ürün $urun_id",
-                'fiyat' => rand(50, 300),
+                'ad' => $urun_ad,
+                'fiyat' => $urun_fiyat,
+                'simge' => $urun_simge,
+                'kategori' => $urun_kategori,
                 'adet' => 1
             ];
             $_SESSION['sepet'][] = $urun_bilgisi;
         }
         
-        $_SESSION['message'] = 'Ürün sepete eklendi!';
+        $_SESSION['message'] = $dil == 'tr' 
+            ? $urun_ad . ' sepete eklendi!' 
+            : $urun_ad . ' added to cart!';
         $_SESSION['message_type'] = 'success';
         
         header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'sepet.php'));
@@ -80,13 +106,17 @@ if (isset($_GET['action']) && isset($_GET['urun_id'])) {
         // Ürünü sepetten sil
         foreach ($_SESSION['sepet'] as $key => $sepet_urun) {
             if (isset($sepet_urun['id']) && $sepet_urun['id'] == $urun_id) {
+                $urun_ad = isset($sepet_urun['ad']) ? $sepet_urun['ad'] : 'Ürün';
+                $_SESSION['message'] = $dil == 'tr' 
+                    ? $urun_ad . ' sepetten silindi!' 
+                    : $urun_ad . ' removed from cart!';
+                $_SESSION['message_type'] = 'success';
+                
                 unset($_SESSION['sepet'][$key]);
                 $_SESSION['sepet'] = array_values($_SESSION['sepet']);
                 break;
             }
         }
-        $_SESSION['message'] = 'Ürün sepetten silindi!';
-        $_SESSION['message_type'] = 'success';
     }
     
     header('Location: sepet.php');
@@ -96,7 +126,7 @@ if (isset($_GET['action']) && isset($_GET['urun_id'])) {
 // Sepeti temizle
 if (isset($_GET['action']) && $_GET['action'] == 'temizle') {
     $_SESSION['sepet'] = [];
-    $_SESSION['message'] = 'Sepetiniz temizlendi!';
+    $_SESSION['message'] = $dil == 'tr' ? 'Sepetiniz temizlendi!' : 'Your cart has been cleared!';
     $_SESSION['message_type'] = 'success';
     header('Location: sepet.php');
     exit();
@@ -162,8 +192,8 @@ if (isset($_SESSION['message'])) {
     }
     
     .item-image {
-        width: 100px;
-        height: 100px;
+        width: 80px;
+        height: 80px;
         background: linear-gradient(135deg, #fff5f7 0%, #ffeef2 100%);
         border-radius: 10px;
         display: flex;
@@ -182,6 +212,18 @@ if (isset($_SESSION['message'])) {
         font-weight: 600;
         color: #333;
         margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .item-category {
+        font-size: 0.8rem;
+        background: #ffeef2;
+        color: #ff6b9d;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-weight: 500;
     }
     
     .item-price {
@@ -335,6 +377,13 @@ if (isset($_SESSION['message'])) {
         color: #666;
         margin-bottom: 30px;
     }
+    
+    /* Kategori renkleri */
+    .category-gul { background: #ffebee; color: #d32f2f; }
+    .category-orkide { background: #f3e5f5; color: #7b1fa2; }
+    .category-lale { background: #fff3e0; color: #f57c00; }
+    .category-buket { background: #e8f5e9; color: #388e3c; }
+    .category-sukulent { background: #e8eaf6; color: #303f9f; }
 </style>
 
 <div class="container">
@@ -357,10 +406,10 @@ if (isset($_SESSION['message'])) {
                         text-decoration: none;
                         font-weight: 600;
                         transition: all 0.3s;
-                    " onclick="return confirm('Sepetinizi temizlemek istediğinize emin misiniz?')"
+                    " onclick="return confirm('<?php echo $dil == 'tr' ? "Sepetinizi temizlemek istediğinize emin misiniz?" : "Are you sure you want to clear your cart?"; ?>')"
                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 10px rgba(244, 67, 54, 0.3)'"
                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                        <i class="fas fa-trash"></i> Sepeti Temizle
+                        <i class="fas fa-trash"></i> <?php echo $dil == 'tr' ? 'Sepeti Temizle' : 'Clear Cart'; ?>
                     </a>
                 </div>
             <?php endif; ?>
@@ -403,14 +452,40 @@ if (isset($_SESSION['message'])) {
                         $urun_fiyat = isset($urun['fiyat']) ? floatval($urun['fiyat']) : 0;
                         $urun_toplam = $urun_adet * $urun_fiyat;
                         $urun_ad = isset($urun['ad']) ? htmlspecialchars($urun['ad']) : 'Ürün';
+                        $urun_simge = isset($urun['simge']) ? $urun['simge'] : '🌸';
+                        $urun_kategori = isset($urun['kategori']) ? $urun['kategori'] : 'tumu';
+                        
+                        // Kategori isimleri
+                        $kategori_isimleri = [
+                            'tr' => [
+                                'gul' => 'Gül',
+                                'orkide' => 'Orkide',
+                                'lale' => 'Lale',
+                                'buket' => 'Buket',
+                                'sukulent' => 'Sukulent'
+                            ],
+                            'en' => [
+                                'gul' => 'Rose',
+                                'orkide' => 'Orchid',
+                                'lale' => 'Tulip',
+                                'buket' => 'Bouquet',
+                                'sukulent' => 'Succulent'
+                            ]
+                        ];
+                        $kategori_ad = $kategori_isimleri[$dil][$urun_kategori] ?? $urun_kategori;
                     ?>
                         <div class="cart-item">
                             <div class="item-image">
-                                <i class="fas fa-flower"></i>
+                                <?php echo $urun_simge; ?>
                             </div>
                             
                             <div class="item-info">
-                                <div class="item-name"><?php echo $urun_ad; ?></div>
+                                <div class="item-name">
+                                    <?php echo $urun_simge . ' ' . $urun_ad; ?>
+                                    <span class="item-category category-<?php echo $urun_kategori; ?>">
+                                        <?php echo $kategori_ad; ?>
+                                    </span>
+                                </div>
                                 <div class="item-price"><?php echo number_format($urun_fiyat, 2); ?> TL</div>
                             </div>
                             
@@ -426,14 +501,17 @@ if (isset($_SESSION['message'])) {
                             
                             <div class="item-total">
                                 <div class="total-price"><?php echo number_format($urun_toplam, 2); ?> TL</div>
+                                <div style="font-size: 0.9rem; color: #666;">
+                                    <?php echo $urun_adet; ?> x <?php echo number_format($urun_fiyat, 2); ?> TL
+                                </div>
                             </div>
                             
                             <div class="item-remove">
-                                 <a href="sepet.php?action=sil&urun_id=<?php echo $urun['id']; ?>" class="remove-btn"
-                                      onclick="return confirm('<?php echo $dil == "tr" ? "Ürünü sepetten silmek istediğinize emin misiniz?" : "Are you sure you want to remove this item from cart?"; ?>')">
-                                          <i class="fas fa-trash"></i>
-                           </a>
-                        </div>
+                                <a href="sepet.php?action=sil&urun_id=<?php echo $urun['id']; ?>" class="remove-btn"
+                                   onclick="return confirm('<?php echo $dil == "tr" ? "Ürünü sepetten silmek istediğinize emin misiniz?" : "Are you sure you want to remove this item from cart?"; ?>')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -468,7 +546,8 @@ if (isset($_SESSION['message'])) {
                     </div>
                     
                     <?php if ($toplam_adet > 0): ?>
-                        <a href="odeme.php" class="checkout-btn">
+                        <!-- Ödeme butonu her zaman gösterilsin -->
+                        <a href="sepet.php?action=odeme" class="checkout-btn">
                             <i class="fas fa-lock"></i> 
                             <?php echo $dil == 'tr' ? 'Güvenli Ödemeye Geç' : 'Proceed to Secure Checkout'; ?>
                         </a>
