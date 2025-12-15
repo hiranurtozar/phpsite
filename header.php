@@ -540,9 +540,19 @@ $sayfa_adi = $sayfa_isimleri[$sayfa] ?? ucfirst($sayfa);
                             <span class="favori-sayaci"><?php echo count($_SESSION['favoriler']); ?></span>
                         <?php endif; ?>
                     </a>
+                    
+                    <!-- SİPARİŞLERİM LİNKİ -->
+                    <?php if(!$is_admin): ?>
+                    <a href="siparislerim.php" class="nav-link">
+                        <i class="fas fa-box"></i> <?php echo $text_selected['siparisler']; ?>
+                    </a>
+                    <?php endif; ?>
+                    
+                    <!-- PROFİL LİNKİ -->
                     <a href="profil.php" class="nav-link">
                         <i class="fas fa-user"></i> <?php echo $text_selected['profilim']; ?>
                     </a>
+                    
                     <a href="auth.php?action=cikis" class="nav-link cikis">
                         <i class="fas fa-sign-out-alt"></i> <?php echo $text_selected['cikis']; ?>
                     </a>

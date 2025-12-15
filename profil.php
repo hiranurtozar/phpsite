@@ -289,7 +289,7 @@ if ($current_user === null) {
                 </div>
                 
                 <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #ffeef2;">
-                    <a href="siparisler.php" style="
+                    <a href="siparislerim.php" style="
                         display: block;
                         text-align: center;
                         background: #2196f3;

@@ -1,6 +1,6 @@
 <?php
 // odeme.php - Output buffering ile
-ob_start(); // Buffer'ı başlat
+ob_start();
 require_once 'header.php';
 
 // Giriş kontrolü
@@ -8,7 +8,7 @@ if (!$is_logged_in) {
     $_SESSION['message'] = 'Ödeme yapmak için giriş yapmalısınız!';
     $_SESSION['message_type'] = 'error';
     header('Location: auth.php');
-    ob_end_flush(); // Buffer'ı temizle
+    ob_end_flush();
     exit();
 }
 
@@ -24,30 +24,100 @@ if (empty($_SESSION['sepet'])) {
 // Toplam hesapla
 $toplam_tutar = 0;
 $toplam_adet = 0;
+$sepet_urunler = [];
 
 foreach ($_SESSION['sepet'] as $urun) {
     $adet = isset($urun['adet']) ? intval($urun['adet']) : 1;
     $fiyat = isset($urun['fiyat']) ? floatval($urun['fiyat']) : 0;
     $toplam_tutar += $fiyat * $adet;
     $toplam_adet += $adet;
+    
+    $sepet_urunler[] = [
+        'id' => $urun['id'],
+        'ad' => $urun['ad'] ?? 'Ürün',
+        'fiyat' => $fiyat,
+        'adet' => $adet,
+        'simge' => $urun['simge'] ?? '🌸',
+        'kategori' => $urun['kategori'] ?? 'tumu'
+    ];
 }
 
 $kdv = $toplam_tutar * 0.18;
 $genel_toplam = $toplam_tutar * 1.18;
 
+// Siparişler JSON dosyası
+$siparisler_dosya = 'siparisler.json';
+
 // Ödeme işlemi
 if (isset($_POST['odeme_yap'])) {
-    // Ödeme başarılı mesajı
-    $_SESSION['message'] = 'Ödemeniz başarıyla alındı! Siparişiniz hazırlanıyor.';
-    $_SESSION['message_type'] = 'success';
+    $kart_adi = htmlspecialchars(trim($_POST['kart_adi'] ?? ''));
+    $kart_no = htmlspecialchars(trim($_POST['kart_no'] ?? ''));
+    $son_kullanma = htmlspecialchars(trim($_POST['son_kullanma'] ?? ''));
+    $cvv = htmlspecialchars(trim($_POST['cvv'] ?? ''));
+    $teslimat_adresi = htmlspecialchars(trim($_POST['teslimat_adresi'] ?? ''));
     
-    // Sepeti temizle
-    $_SESSION['sepet'] = [];
-    
-    // Anasayfaya yönlendir
-    header('Location: anasayfa.php');
-    ob_end_flush();
-    exit();
+    if (empty($kart_adi) || empty($kart_no) || empty($son_kullanma) || empty($cvv) || empty($teslimat_adresi)) {
+        $_SESSION['message'] = 'Lütfen tüm alanları doldurun!';
+        $_SESSION['message_type'] = 'error';
+    } else {
+        // Sipariş numarası oluştur
+        $siparis_no = 'SIP' . date('Ymd') . rand(1000, 9999);
+        
+        // Yeni sipariş
+        $yeni_siparis = [
+            'siparis_no' => $siparis_no,
+            'user_id' => $_SESSION['user_id'],
+            'ad_soyad' => $_SESSION['ad_soyad'] ?? 'Müşteri',
+            'email' => $_SESSION['email'] ?? '',
+            'tarih' => date('d.m.Y H:i:s'),
+            'urunler' => $sepet_urunler,
+            'toplam_tutar' => $toplam_tutar,
+            'kdv' => $kdv,
+            'genel_toplam' => $genel_toplam,
+            'teslimat_adresi' => $teslimat_adresi,
+            'kart_son_dort' => substr(str_replace(' ', '', $kart_no), -4),
+            'durum' => 'onay_bekliyor',
+            'takip_kodu' => 'TRK' . strtoupper(uniqid()),
+            'takip_gecmisi' => [
+                [
+                    'tarih' => date('d.m.Y H:i:s'),
+                    'durum' => 'onay_bekliyor',
+                    'aciklama' => 'Siparişiniz alındı, onay bekliyor.',
+                    'icon' => '📝'
+                ]
+            ]
+        ];
+        
+        // Siparişleri dosyadan oku
+        $siparisler = [];
+        if (file_exists($siparisler_dosya)) {
+            $siparisler = json_decode(file_get_contents($siparisler_dosya), true);
+            if (!$siparisler || !is_array($siparisler)) {
+                $siparisler = [];
+            }
+        }
+        
+        // Yeni siparişi ekle
+        $siparisler[] = $yeni_siparis;
+        
+        // Dosyaya kaydet
+        if (file_put_contents($siparisler_dosya, json_encode($siparisler, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+            // Sepeti temizle
+            $_SESSION['sepet'] = [];
+            
+            // Sipariş bilgisini session'a kaydet
+            $_SESSION['son_siparis_no'] = $siparis_no;
+            $_SESSION['son_siparis_tarih'] = date('d.m.Y H:i:s');
+            
+            // Sipariş takip sayfasına yönlendir
+            header('Location: siparis_takip.php?siparis_no=' . $siparis_no);
+            ob_end_flush();
+            exit();
+        } else {
+            $_SESSION['message'] = 'Sipariş kaydedilirken bir hata oluştu!';
+            $_SESSION['message_type'] = 'error';
+        }
+    }
 }
 ?>
 
@@ -195,8 +265,28 @@ if (isset($_POST['odeme_yap'])) {
     .cart-item {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         padding: 10px 0;
         border-bottom: 1px solid #ffeef2;
+    }
+    
+    .cart-item-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .cart-item-simge {
+        font-size: 1.5rem;
+    }
+    
+    .success-message {
+        background: #d4edda;
+        color: #155724;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border-left: 4px solid #28a745;
     }
 </style>
 
@@ -224,7 +314,7 @@ if (isset($_POST['odeme_yap'])) {
                 <form method="POST" action="">
                     <div class="form-group">
                         <label class="form-label">Kart Üzerindeki İsim</label>
-                        <input type="text" name="kart_adi" class="form-input" placeholder="Ad Soyad" required>
+                        <input type="text" name="kart_adi" class="form-input" placeholder="Ad Soyad" required value="<?php echo htmlspecialchars($_SESSION['ad_soyad'] ?? ''); ?>">
                     </div>
                     
                     <div class="form-group">
@@ -277,10 +367,17 @@ if (isset($_POST['odeme_yap'])) {
                         $fiyat = isset($urun['fiyat']) ? floatval($urun['fiyat']) : 0;
                         $toplam = $adet * $fiyat;
                         $urun_ad = isset($urun['ad']) ? htmlspecialchars($urun['ad']) : 'Ürün';
+                        $urun_simge = isset($urun['simge']) ? $urun['simge'] : '🌸';
                     ?>
                         <div class="cart-item">
-                            <span><?php echo $urun_ad; ?> x<?php echo $adet; ?></span>
-                            <span><?php echo number_format($toplam, 2); ?> TL</span>
+                            <div class="cart-item-info">
+                                <span class="cart-item-simge"><?php echo $urun_simge; ?></span>
+                                <div>
+                                    <div style="font-weight: 500;"><?php echo $urun_ad; ?></div>
+                                    <div style="font-size: 0.9rem; color: #666;"><?php echo $adet; ?> adet</div>
+                                </div>
+                            </div>
+                            <span style="font-weight: 600;"><?php echo number_format($toplam, 2); ?> TL</span>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -355,6 +452,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?php 
-ob_end_flush(); // Buffer'ı temizle
+ob_end_flush();
 require_once 'footer.php'; 
 ?>

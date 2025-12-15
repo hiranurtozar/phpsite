@@ -14,5 +14,158 @@
         "toplam": 179.98,
         "odeme_tipi": "banka_havalesi",
         "durum": "beklemede"
+    },
+    {
+        "siparis_no": "SIP202512152915",
+        "user_id": "user_693fc2347fe4e",
+        "ad_soyad": "Hiranur Tozar",
+        "email": "tozarhiranur@gmail.com",
+        "tarih": "15.12.2025 09:28:59",
+        "urunler": [
+            {
+                "id": 1,
+                "ad": "K\u0131rm\u0131z\u0131 G\u00fcl Buketi",
+                "fiyat": 129.99,
+                "adet": 2,
+                "simge": "\ud83c\udf39",
+                "kategori": "gul"
+            }
+        ],
+        "toplam_tutar": 259.98,
+        "kdv": 46.7964,
+        "genel_toplam": 306.7764,
+        "teslimat_adresi": "gebze",
+        "kart_son_dort": "5567",
+        "durum": "teslim_edildi",
+        "takip_kodu": "TRK693FC6CB5BDB1",
+        "takip_gecmisi": [
+            {
+                "tarih": "15.12.2025 11:51:46",
+                "durum": "teslim_edildi",
+                "aciklama": "Sipari\u015finiz teslim edildi.",
+                "icon": "\u2705"
+            },
+            {
+                "tarih": "15.12.2025 11:51:46",
+                "durum": "kargoya_verildi",
+                "aciklama": "Sipari\u015finiz kargoya verildi.",
+                "icon": "\ud83d\udce6"
+            },
+            {
+                "tarih": "15.12.2025 11:50:46",
+                "durum": "hazirlaniyor",
+                "aciklama": "Sipari\u015finiz haz\u0131rlan\u0131yor.",
+                "icon": "\ud83d\ude9a"
+            },
+            {
+                "tarih": "15.12.2025 09:28:59",
+                "durum": "onay_bekliyor",
+                "aciklama": "Sipari\u015finiz al\u0131nd\u0131, onay bekliyor.",
+                "icon": "\ud83d\udcdd"
+            }
+        ],
+        "son_durum_zamani": "2025-12-15 11:51:46"
+    },
+    {
+        "siparis_no": "SIP202512159321",
+        "user_id": "user_693fc2347fe4e",
+        "ad_soyad": "Hiranur Tozar",
+        "email": "tozarhiranur@gmail.com",
+        "tarih": "15.12.2025 12:08:11",
+        "urunler": [
+            {
+                "id": 2,
+                "ad": "Beyaz Orkide",
+                "fiyat": 199.99,
+                "adet": 1,
+                "simge": "\ud83d\udcae",
+                "kategori": "orkide"
+            }
+        ],
+        "toplam_tutar": 199.99,
+        "kdv": 35.9982,
+        "genel_toplam": 235.9882,
+        "teslimat_adresi": "izmit",
+        "kart_son_dort": "5567",
+        "durum": "teslim_edildi",
+        "takip_kodu": "TRK693FEC1B8262B",
+        "takip_gecmisi": [
+            {
+                "tarih": "15.12.2025 12:09:14",
+                "durum": "teslim_edildi",
+                "aciklama": "Sipari\u015finiz teslim edildi.",
+                "icon": "\u2705"
+            },
+            {
+                "tarih": "15.12.2025 12:08:41",
+                "durum": "kargoya_verildi",
+                "aciklama": "Sipari\u015finiz kargoya verildi.",
+                "icon": "\ud83d\udce6"
+            },
+            {
+                "tarih": "15.12.2025 12:08:41",
+                "durum": "hazirlaniyor",
+                "aciklama": "Sipari\u015finiz haz\u0131rlan\u0131yor.",
+                "icon": "\ud83d\ude9a"
+            },
+            {
+                "tarih": "15.12.2025 12:08:11",
+                "durum": "onay_bekliyor",
+                "aciklama": "Sipari\u015finiz al\u0131nd\u0131, onay bekliyor.",
+                "icon": "\ud83d\udcdd"
+            }
+        ],
+        "son_durum_zamani": "2025-12-15 12:09:14"
+    },
+    {
+        "siparis_no": "SIP202512159914",
+        "user_id": "user_693fc2347fe4e",
+        "ad_soyad": "Hiranur Tozar",
+        "email": "tozarhiranur@gmail.com",
+        "tarih": "15.12.2025 12:20:46",
+        "urunler": [
+            {
+                "id": 3,
+                "ad": "Renkli Lale Demeti",
+                "fiyat": 89.99,
+                "adet": 1,
+                "simge": "\ud83c\udf37",
+                "kategori": "lale"
+            }
+        ],
+        "toplam_tutar": 89.99,
+        "kdv": 16.1982,
+        "genel_toplam": 106.1882,
+        "teslimat_adresi": "gebze",
+        "kart_son_dort": "5448",
+        "durum": "teslim_edildi",
+        "takip_kodu": "TRK693FEF0EA4018",
+        "takip_gecmisi": [
+            {
+                "tarih": "15.12.2025 12:22:58",
+                "durum": "teslim_edildi",
+                "aciklama": "Sipari\u015finiz teslim edildi.",
+                "icon": "\u2705"
+            },
+            {
+                "tarih": "15.12.2025 12:22:47",
+                "durum": "kargoya_verildi",
+                "aciklama": "Sipari\u015finiz kargoya verildi.",
+                "icon": "\ud83d\udce6"
+            },
+            {
+                "tarih": "15.12.2025 12:20:49",
+                "durum": "hazirlaniyor",
+                "aciklama": "Sipari\u015finiz haz\u0131rlan\u0131yor.",
+                "icon": "\ud83d\ude9a"
+            },
+            {
+                "tarih": "15.12.2025 12:20:46",
+                "durum": "onay_bekliyor",
+                "aciklama": "Sipari\u015finiz al\u0131nd\u0131, onay bekliyor.",
+                "icon": "\ud83d\udcdd"
+            }
+        ],
+        "son_guncelleme": 1765797778
     }
 ]
