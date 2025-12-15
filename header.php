@@ -104,7 +104,13 @@ $sayfa_isimleri = [
     'cicek' => 'Çiçek Detay'
 ];
 $sayfa_adi = $sayfa_isimleri[$sayfa] ?? ucfirst($sayfa);
-?><!DOCTYPE html>
+
+// Arama formu için mevcut değerleri al
+$mevcut_arama = isset($_GET['arama']) ? $_GET['arama'] : '';
+$mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
+?>
+
+<!DOCTYPE html>
 <html data-theme="<?php echo htmlspecialchars($tema); ?>" lang="<?php echo htmlspecialchars($dil); ?>">
 <head>
     <title>ÇiçekBahçesi - <?php echo $dil == 'tr' ? 'En Güzel Çiçekler' : 'Most Beautiful Flowers'; ?></title>
@@ -342,7 +348,7 @@ $sayfa_adi = $sayfa_isimleri[$sayfa] ?? ucfirst($sayfa);
             font-size: 1rem;
             background: white;
             cursor: pointer;
-            min-width: 200px;
+            min-width: 220px;
         }
         
         .arama-input {
@@ -491,6 +497,11 @@ $sayfa_adi = $sayfa_isimleri[$sayfa] ?? ucfirst($sayfa);
             const tema = document.documentElement.getAttribute('data-theme');
             temaBtn.innerHTML = tema === 'light' ? '🌙' : '☀️';
         }
+        
+        // Debug için
+        console.log('Header.php yüklendi');
+        console.log('Mevcut kategori:', '<?php echo $mevcut_kategori; ?>');
+        console.log('Mevcut arama:', '<?php echo $mevcut_arama; ?>');
     });
     </script>
 </head>
@@ -625,15 +636,38 @@ $sayfa_adi = $sayfa_isimleri[$sayfa] ?? ucfirst($sayfa);
             <form method="get" action="urunler.php">
                 <div class="arama-wrapper">
                     <select name="kategori" class="kategori-select">
-                        <option value=""><?php echo $text_selected['tum_urunler']; ?></option>
-                        <option value="gul">🌹 <?php echo $dil == 'tr' ? 'Güller' : 'Roses'; ?></option>
-                        <option value="orkide">💮 <?php echo $dil == 'tr' ? 'Orkideler' : 'Orchids'; ?></option>
-                        <option value="lale">🌷 <?php echo $dil == 'tr' ? 'Laleler' : 'Tulips'; ?></option>
-                        <option value="buket">💐 <?php echo $dil == 'tr' ? 'Buketler' : 'Bouquets'; ?></option>
-                        <option value="sukulent">🌵 <?php echo $dil == 'tr' ? 'Sukulentler' : 'Succulents'; ?></option>
+                        <option value="" <?php echo empty($mevcut_kategori) ? 'selected' : ''; ?>>
+                            <?php echo $text_selected['tum_urunler']; ?>
+                        </option>
+                        <option value="gul" <?php echo $mevcut_kategori == 'gul' ? 'selected' : ''; ?>>
+                            🌹 <?php echo $dil == 'tr' ? 'Güller' : 'Roses'; ?>
+                        </option>
+                        <option value="orkide" <?php echo $mevcut_kategori == 'orkide' ? 'selected' : ''; ?>>
+                            💮 <?php echo $dil == 'tr' ? 'Orkideler' : 'Orchids'; ?>
+                        </option>
+                        <option value="lale" <?php echo $mevcut_kategori == 'lale' ? 'selected' : ''; ?>>
+                            🌷 <?php echo $dil == 'tr' ? 'Laleler' : 'Tulips'; ?>
+                        </option>
+                        <option value="buket" <?php echo $mevcut_kategori == 'buket' ? 'selected' : ''; ?>>
+                            💐 <?php echo $dil == 'tr' ? 'Buketler' : 'Bouquets'; ?>
+                        </option>
+                        <option value="sukulent" <?php echo $mevcut_kategori == 'sukulent' ? 'selected' : ''; ?>>
+                            🌵 <?php echo $dil == 'tr' ? 'Sukulentler' : 'Succulents'; ?>
+                        </option>
+                        <option value="aranjman" <?php echo $mevcut_kategori == 'aranjman' ? 'selected' : ''; ?>>
+                            🏵️ <?php echo $dil == 'tr' ? 'Aranjmanlar' : 'Arrangements'; ?>
+                        </option>
+                        <option value="hediye" <?php echo $mevcut_kategori == 'hediye' ? 'selected' : ''; ?>>
+                            🎁 <?php echo $dil == 'tr' ? 'Hediye Setleri' : 'Gift Sets'; ?>
+                        </option>
+                        <option value="doga" <?php echo $mevcut_kategori == 'doga' ? 'selected' : ''; ?>>
+                            🌼 <?php echo $dil == 'tr' ? 'Doğa Çiçekleri' : 'Natural Flowers'; ?>
+                        </option>
                     </select>
                     
-                    <input type="text" name="arama" class="arama-input" placeholder="<?php echo $text_selected['ara_placeholder']; ?>">
+                    <input type="text" name="arama" class="arama-input" 
+                           placeholder="<?php echo $text_selected['ara_placeholder']; ?>"
+                           value="<?php echo htmlspecialchars($mevcut_arama); ?>">
                     
                     <button type="submit" class="arama-buton">
                         <i class="fas fa-search"></i> <?php echo $text_selected['urun_ara']; ?>
