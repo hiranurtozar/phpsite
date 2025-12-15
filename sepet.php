@@ -23,6 +23,145 @@ if (isset($_GET['action']) && $_GET['action'] == 'odeme') {
     }
 }
 
+// Puan ve kupon değişkenlerini başlat
+$kullanici_puani = isset($_SESSION['kullanici_puani']) ? intval($_SESSION['kullanici_puani']) : 0;
+$kullanilan_puan = 0;
+$kupon_kodu = '';
+$kupon_indirimi = 0;
+$kupon_mesaji = '';
+
+// Örnek kupon bilgileri (sabit tutarlı)
+$ornek_kuponlar = [
+    'ILKALISVERIS' => [
+        'indirim' => 20,
+        'min_sepet' => 200,
+        'aciklama' => 'İlk alışverişe özel 20 TL indirim'
+    ],
+    '1000E100' => [
+        'indirim' => 100,
+        'min_sepet' => 1000,
+        'aciklama' => '1000 TL ve üzeri alışverişlerde 100 TL indirim'
+    ],
+    '500E50' => [
+        'indirim' => 50,
+        'min_sepet' => 500,
+        'aciklama' => '500 TL ve üzeri alışverişlerde 50 TL indirim'
+    ],
+    '2000E200' => [
+        'indirim' => 200,
+        'min_sepet' => 2000,
+        'aciklama' => '2000 TL ve üzeri alışverişlerde 200 TL indirim'
+    ],
+    'FLOWER10' => [
+        'indirim' => 10,
+        'min_sepet' => 100,
+        'aciklama' => '10 TL indirim kuponu'
+    ]
+];
+
+// Kupon uygulama işlemi - SABİT TUTAR olarak
+if (isset($_POST['kupon_uygula'])) {
+    $kupon_kodu = trim($_POST['kupon_kodu']);
+    
+    if (isset($ornek_kuponlar[$kupon_kodu])) {
+        $kupon_indirimi = $ornek_kuponlar[$kupon_kodu]['indirim'];
+        $kupon_min_tutar = $ornek_kuponlar[$kupon_kodu]['min_sepet'];
+        $kupon_aciklama = $ornek_kuponlar[$kupon_kodu]['aciklama'];
+        
+        // Toplamı önce hesaplayalım (kontrol için)
+        $toplam_hesapla = 0;
+        if (!empty($_SESSION['sepet'])) {
+            foreach ($_SESSION['sepet'] as $urun) {
+                $adet = isset($urun['adet']) ? intval($urun['adet']) : 1;
+                $fiyat = isset($urun['fiyat']) ? floatval($urun['fiyat']) : 0;
+                $toplam_hesapla += $fiyat * $adet;
+            }
+        }
+        
+        // Minimum sepet kontrolü
+        if ($toplam_hesapla >= $kupon_min_tutar) {
+            $_SESSION['uygulanan_kupon'] = [
+                'kod' => $kupon_kodu,
+                'indirim' => $kupon_indirimi, // SABİT TL indirim
+                'min_sepet' => $kupon_min_tutar,
+                'aciklama' => $kupon_aciklama
+            ];
+            $_SESSION['message'] = $dil == 'tr' 
+                ? 'Kupon başarıyla uygulandı! ' . $kupon_indirimi . ' TL indirim kazandınız.' 
+                : 'Coupon applied successfully! You got ' . $kupon_indirimi . ' TL discount.';
+            $_SESSION['message_type'] = 'success';
+        } else {
+            $eksik_tutar = $kupon_min_tutar - $toplam_hesapla;
+            $_SESSION['message'] = $dil == 'tr' 
+                ? 'Bu kuponu kullanmak için sepet tutarınız en az ' . number_format($kupon_min_tutar, 2) . ' TL olmalıdır. (Eksik: ' . number_format($eksik_tutar, 2) . ' TL)' 
+                : 'You need at least ' . number_format($kupon_min_tutar, 2) . ' TL in your cart to use this coupon. (Missing: ' . number_format($eksik_tutar, 2) . ' TL)';
+            $_SESSION['message_type'] = 'error';
+        }
+    } else {
+        $_SESSION['message'] = $dil == 'tr' 
+            ? 'Geçersiz kupon kodu!' 
+            : 'Invalid coupon code!';
+        $_SESSION['message_type'] = 'error';
+    }
+    
+    header('Location: sepet.php');
+    exit();
+}
+
+// Kupon kaldırma işlemi
+if (isset($_GET['action']) && $_GET['action'] == 'kupon_kaldir') {
+    unset($_SESSION['uygulanan_kupon']);
+    $_SESSION['message'] = $dil == 'tr' 
+        ? 'Kupon kaldırıldı!' 
+        : 'Coupon removed!';
+    $_SESSION['message_type'] = 'success';
+    header('Location: sepet.php');
+    exit();
+}
+
+// Puan kullanma işlemi
+if (isset($_POST['puan_kullan'])) {
+    $kullanilacak_puan = intval($_POST['kullanilacak_puan']);
+    
+    if ($kullanilacak_puan <= $kullanici_puani) {
+        // Maksimum kullanılabilecek puan kontrolü (1000 puan = 100 TL)
+        $maksimum_puan_indirimi = $toplam_tutar; // Toplam tutardan fazla indirim yapılamaz
+        $kullanilabilecek_maksimum_puan = min($kullanici_puani, $maksimum_puan_indirimi * 10);
+        
+        if ($kullanilacak_puan <= $kullanilabilecek_maksimum_puan) {
+            $_SESSION['kullanilan_puan'] = $kullanilacak_puan;
+            $_SESSION['message'] = $dil == 'tr' 
+                ? $kullanilacak_puan . ' puan başarıyla kullanıldı!' 
+                : $kullanilacak_puan . ' points used successfully!';
+            $_SESSION['message_type'] = 'success';
+        } else {
+            $_SESSION['message'] = $dil == 'tr' 
+                ? 'Kullanabileceğiniz maksimum puan: ' . $kullanilabilecek_maksimum_puan 
+                : 'Maximum points you can use: ' . $kullanilabilecek_maksimum_puan;
+            $_SESSION['message_type'] = 'error';
+        }
+    } else {
+        $_SESSION['message'] = $dil == 'tr' 
+            ? 'Yetersiz puan! Mevcut puanınız: ' . $kullanici_puani 
+            : 'Insufficient points! Your current points: ' . $kullanici_puani;
+        $_SESSION['message_type'] = 'error';
+    }
+    
+    header('Location: sepet.php');
+    exit();
+}
+
+// Puan kaldırma işlemi
+if (isset($_GET['action']) && $_GET['action'] == 'puan_kaldir') {
+    unset($_SESSION['kullanilan_puan']);
+    $_SESSION['message'] = $dil == 'tr' 
+        ? 'Puan kullanımı kaldırıldı!' 
+        : 'Point usage removed!';
+    $_SESSION['message_type'] = 'success';
+    header('Location: sepet.php');
+    exit();
+}
+
 // Sepet işlemleri
 if (isset($_GET['action']) && isset($_GET['urun_id'])) {
     $urun_id = intval($_GET['urun_id']);
@@ -66,6 +205,18 @@ if (isset($_GET['action']) && isset($_GET['urun_id'])) {
             ? $urun_ad . ' sepete eklendi!' 
             : $urun_ad . ' added to cart!';
         $_SESSION['message_type'] = 'success';
+        
+        // Ürün eklendiğinde puan kazan
+        if ($is_logged_in) {
+            // Her 10 TL için 1 puan kazan
+            $kazanilan_puan = floor($urun_fiyat / 10);
+            if ($kazanilan_puan > 0) {
+                if (!isset($_SESSION['kullanici_puani'])) {
+                    $_SESSION['kullanici_puani'] = 0;
+                }
+                $_SESSION['kullanici_puani'] += $kazanilan_puan;
+            }
+        }
         
         header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'sepet.php'));
         exit();
@@ -126,19 +277,24 @@ if (isset($_GET['action']) && isset($_GET['urun_id'])) {
 // Sepeti temizle
 if (isset($_GET['action']) && $_GET['action'] == 'temizle') {
     $_SESSION['sepet'] = [];
+    unset($_SESSION['uygulanan_kupon']);
+    unset($_SESSION['kullanilan_puan']);
     $_SESSION['message'] = $dil == 'tr' ? 'Sepetiniz temizlendi!' : 'Your cart has been cleared!';
     $_SESSION['message_type'] = 'success';
     header('Location: sepet.php');
     exit();
 }
 
-// Toplam hesapla - GÜVENLİ VERSİYON
+// Uygulanan kupon ve puan bilgilerini al
+$uygulanan_kupon = isset($_SESSION['uygulanan_kupon']) ? $_SESSION['uygulanan_kupon'] : null;
+$kullanilan_puan = isset($_SESSION['kullanilan_puan']) ? intval($_SESSION['kullanilan_puan']) : 0;
+
+// Toplam hesapla
 $toplam_tutar = 0;
 $toplam_adet = 0;
 
 if (!empty($_SESSION['sepet'])) {
     foreach ($_SESSION['sepet'] as $urun) {
-        // Tüm gerekli anahtarların var olduğundan emin ol
         $adet = isset($urun['adet']) ? intval($urun['adet']) : 1;
         $fiyat = isset($urun['fiyat']) ? floatval($urun['fiyat']) : 0;
         
@@ -146,6 +302,39 @@ if (!empty($_SESSION['sepet'])) {
         $toplam_adet += $adet;
     }
 }
+
+// Kupon indirimini hesapla - SABİT TUTAR olarak
+$kupon_indirimi_tl = 0;
+if ($uygulanan_kupon && $toplam_tutar > 0) {
+    // Minimum sepet kontrolü (bir daha kontrol et)
+    $kupon_min_sepet = isset($uygulanan_kupon['min_sepet']) ? floatval($uygulanan_kupon['min_sepet']) : 0;
+    
+    if ($toplam_tutar >= $kupon_min_sepet) {
+        $kupon_indirimi_tl = floatval($uygulanan_kupon['indirim']); // Direkt TL olarak
+        // Kupon indirimi toplam tutardan fazla olamaz
+        $kupon_indirimi_tl = min($kupon_indirimi_tl, $toplam_tutar);
+    } else {
+        // Sepet minimum tutarı karşılamıyorsa kuponu kaldır
+        unset($_SESSION['uygulanan_kupon']);
+        $uygulanan_kupon = null;
+        $kupon_indirimi_tl = 0;
+        $_SESSION['message'] = $dil == 'tr' 
+            ? 'Kuponunuzun geçerliliği için sepet tutarınız en az ' . number_format($kupon_min_sepet, 2) . ' TL olmalıdır.' 
+            : 'Your cart must be at least ' . number_format($kupon_min_sepet, 2) . ' TL to use this coupon.';
+        $_SESSION['message_type'] = 'error';
+    }
+}
+
+// Puan indirimini hesapla (1000 puan = 100 TL)
+$puan_indirimi_tl = $kullanilan_puan / 10;
+
+// İndirimli toplam (KDV ÖNCESİ)
+$indirimli_toplam_kdvsiz = $toplam_tutar - $kupon_indirimi_tl - $puan_indirimi_tl;
+if ($indirimli_toplam_kdvsiz < 0) $indirimli_toplam_kdvsiz = 0;
+
+// KDV hesaplama (indirimli tutar üzerinden)
+$kdv_tutari = $indirimli_toplam_kdvsiz * 0.18;
+$genel_toplam = $indirimli_toplam_kdvsiz + $kdv_tutari;
 
 // Mesajları göster
 if (isset($_SESSION['message'])) {
@@ -384,6 +573,183 @@ if (isset($_SESSION['message'])) {
     .category-lale { background: #fff3e0; color: #f57c00; }
     .category-buket { background: #e8f5e9; color: #388e3c; }
     .category-sukulent { background: #e8eaf6; color: #303f9f; }
+    
+    /* Kupon ve Puan Baloncukları */
+    .discount-bubbles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin: 20px 0;
+        background: #f9f9f9;
+        padding: 20px;
+        border-radius: 10px;
+        border: 2px dashed #ffeef2;
+    }
+    
+    .discount-bubble {
+        flex: 1;
+        min-width: 250px;
+    }
+    
+    .bubble-content {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+        border: 2px solid #ffeef2;
+        transition: all 0.3s;
+    }
+    
+    .bubble-content:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(255, 107, 157, 0.15);
+    }
+    
+    .bubble-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .bubble-title i {
+        color: #ff6b9d;
+        font-size: 1.2rem;
+    }
+    
+    .coupon-form {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .coupon-input {
+        flex: 1;
+        padding: 12px 15px;
+        border: 2px solid #ffeef2;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    
+    .coupon-input:focus {
+        border-color: #ff6b9d;
+        outline: none;
+    }
+    
+    .apply-btn {
+        background: #ff6b9d;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .apply-btn:hover {
+        background: #ff4d87;
+    }
+    
+    .points-display {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+        padding: 10px 15px;
+        border-radius: 8px;
+    }
+    
+    .points-count {
+        font-weight: 700;
+        color: #ff6b9d;
+        font-size: 1.1rem;
+    }
+    
+    .points-info {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    .use-points-form {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    
+    .points-input {
+        flex: 1;
+        padding: 12px 15px;
+        border: 2px solid #ffeef2;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    
+    .points-input:focus {
+        border-color: #ff6b9d;
+        outline: none;
+    }
+    
+    .applied-discounts {
+        margin-top: 15px;
+        padding: 15px;
+        background: #f0fff4;
+        border-radius: 8px;
+        border: 2px solid #c8e6c9;
+    }
+    
+    .applied-discount-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #e8f5e9;
+    }
+    
+    .applied-discount-item:last-child {
+        border-bottom: none;
+    }
+    
+    .discount-type {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .discount-amount {
+        font-weight: 700;
+        color: #4CAF50;
+    }
+    
+    .remove-discount {
+        color: #f44336;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.1rem;
+        padding: 5px;
+        margin-left: 10px;
+        transition: all 0.3s;
+    }
+    
+    .remove-discount:hover {
+        transform: scale(1.2);
+    }
+    
+    .indirim-row {
+        color: #4CAF50;
+        font-weight: 600;
+    }
+    
+    .indirim-row .summary-value {
+        color: #4CAF50;
+    }
 </style>
 
 <div class="container">
@@ -438,6 +804,126 @@ if (isset($_SESSION['message'])) {
                 </a>
             </div>
         <?php else: ?>
+            <!-- KUPON VE PUAN BALONCUKLARI -->
+            <div class="discount-bubbles">
+                <!-- Kupon Baloncuğu -->
+                <div class="discount-bubble">
+                    <div class="bubble-content">
+                        <div class="bubble-title">
+                            <i class="fas fa-tag"></i>
+                            <?php echo $dil == 'tr' ? 'Kupon Kodu' : 'Coupon Code'; ?>
+                        </div>
+                        
+                        <?php if ($uygulanan_kupon): ?>
+                            <div class="applied-discounts">
+                                <div class="applied-discount-item">
+                                    <div class="discount-type">
+                                        <i class="fas fa-tag" style="color: #ff6b9d;"></i>
+                                        <span>
+                                            <?php echo $uygulanan_kupon['kod']; ?> 
+                                            (<?php echo $uygulanan_kupon['indirim']; ?> TL <?php echo $dil == 'tr' ? 'indirim' : 'discount'; ?>)
+                                        </span>
+                                    </div>
+                                    <div style="display: flex; align-items: center;">
+                                        <span class="discount-amount">-<?php echo number_format($kupon_indirimi_tl, 2); ?> TL</span>
+                                        <a href="sepet.php?action=kupon_kaldir" class="remove-discount" title="<?php echo $dil == 'tr' ? 'Kaldır' : 'Remove'; ?>">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <form method="POST" class="coupon-form">
+                                <input type="text" name="kupon_kodu" class="coupon-input" 
+                                       placeholder="<?php echo $dil == 'tr' ? 'Kupon kodunuzu girin' : 'Enter your coupon code'; ?>"
+                                       required>
+                                <button type="submit" name="kupon_uygula" class="apply-btn">
+                                    <?php echo $dil == 'tr' ? 'Uygula' : 'Apply'; ?>
+                                </button>
+                            </form>
+                            <div class="points-info">
+                                <?php if ($dil == 'tr'): ?>
+                                    Geçerli kuponlar: ILKALISVERIS (20 TL), 1000E100 (100 TL), 500E50 (50 TL), 2000E200 (200 TL), FLOWER10 (10 TL)
+                                <?php else: ?>
+                                    Valid coupons: ILKALISVERIS (20 TL), 1000E100 (100 TL), 500E50 (50 TL), 2000E200 (200 TL), FLOWER10 (10 TL)
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Puan Baloncuğu -->
+                <div class="discount-bubble">
+                    <div class="bubble-content">
+                        <div class="bubble-title">
+                            <i class="fas fa-star"></i>
+                            <?php echo $dil == 'tr' ? 'Puanlarım' : 'My Points'; ?>
+                        </div>
+                        
+                        <div class="points-display">
+                            <div>
+                                <div><?php echo $dil == 'tr' ? 'Mevcut Puan' : 'Available Points'; ?></div>
+                                <div class="points-count"><?php echo number_format($kullanici_puani); ?> <?php echo $dil == 'tr' ? 'puan' : 'points'; ?></div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div><?php echo $dil == 'tr' ? 'Değeri' : 'Value'; ?></div>
+                                <div class="points-count"><?php echo number_format($kullanici_puani / 10, 2); ?> TL</div>
+                            </div>
+                        </div>
+                        
+                        <?php if ($kullanici_puani >= 100): ?>
+                            <?php if ($kullanilan_puan > 0): ?>
+                                <div class="applied-discounts">
+                                    <div class="applied-discount-item">
+                                        <div class="discount-type">
+                                            <i class="fas fa-star" style="color: #FFD700;"></i>
+                                            <span>
+                                                <?php echo $kullanilan_puan; ?> <?php echo $dil == 'tr' ? 'puan kullanıldı' : 'points used'; ?>
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; align-items: center;">
+                                            <span class="discount-amount">-<?php echo number_format($puan_indirimi_tl, 2); ?> TL</span>
+                                            <a href="sepet.php?action=puan_kaldir" class="remove-discount" title="<?php echo $dil == 'tr' ? 'Kaldır' : 'Remove'; ?>">
+                                                <i class="fas fa-times"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <form method="POST" class="use-points-form">
+                                    <input type="number" name="kullanilacak_puan" class="points-input" 
+                                           min="100" max="<?php echo $kullanici_puani; ?>" 
+                                           step="100" value="100"
+                                           placeholder="<?php echo $dil == 'tr' ? 'Kullanılacak puan' : 'Points to use'; ?>"
+                                           required>
+                                    <button type="submit" name="puan_kullan" class="apply-btn">
+                                        <?php echo $dil == 'tr' ? 'Kullan' : 'Use'; ?>
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                            
+                            <div class="points-info">
+                                <?php if ($dil == 'tr'): ?>
+                                    1000 puan = 100 TL indirim • En az 100 puan kullanabilirsiniz
+                                <?php else: ?>
+                                    1000 points = 100 TL discount • Minimum 100 points required
+                                <?php endif; ?>
+                            </div>
+                        <?php else: ?>
+                            <p style="color: #666; font-size: 14px; text-align: center; padding: 10px; background: #f5f5f5; border-radius: 8px;">
+                                <?php if ($dil == 'tr'): ?>
+                                    Puan kullanmak için en az 100 puanınız olmalıdır.<br>
+                                    Her 10 TL alışverişte 1 puan kazanırsınız.
+                                <?php else: ?>
+                                    You need at least 100 points to use them.<br>
+                                    You earn 1 point for every 10 TL purchase.
+                                <?php endif; ?>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
                 <!-- SEPET ÜRÜNLERİ -->
                 <div class="cart-items">
@@ -528,6 +1014,37 @@ if (isset($_SESSION['message'])) {
                         <span class="summary-value"><?php echo number_format($toplam_tutar, 2); ?> TL</span>
                     </div>
                     
+                    <?php if ($kupon_indirimi_tl > 0): ?>
+                        <div class="summary-row indirim-row">
+                            <span class="summary-label">
+                                <i class="fas fa-tag"></i> 
+                                <?php echo $dil == 'tr' ? 'Kupon İndirimi:' : 'Coupon Discount:'; ?>
+                                <?php if ($uygulanan_kupon): ?>
+                                    (<?php echo $uygulanan_kupon['kod']; ?> - <?php echo $uygulanan_kupon['indirim']; ?> TL)
+                                <?php endif; ?>
+                            </span>
+                            <span class="summary-value">-<?php echo number_format($kupon_indirimi_tl, 2); ?> TL</span>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($puan_indirimi_tl > 0): ?>
+                        <div class="summary-row indirim-row">
+                            <span class="summary-label">
+                                <i class="fas fa-star"></i> 
+                                <?php echo $dil == 'tr' ? 'Puan İndirimi:' : 'Points Discount:'; ?>
+                                (<?php echo $kullanilan_puan; ?> <?php echo $dil == 'tr' ? 'puan' : 'points'; ?>)
+                            </span>
+                            <span class="summary-value">-<?php echo number_format($puan_indirimi_tl, 2); ?> TL</span>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($kupon_indirimi_tl > 0 || $puan_indirimi_tl > 0): ?>
+                        <div class="summary-row">
+                            <span class="summary-label"><?php echo $dil == 'tr' ? 'İndirimli Toplam:' : 'Discounted Total:'; ?></span>
+                            <span class="summary-value"><?php echo number_format($indirimli_toplam_kdvsiz, 2); ?> TL</span>
+                        </div>
+                    <?php endif; ?>
+                    
                     <div class="summary-row">
                         <span class="summary-label"><?php echo $dil == 'tr' ? 'Kargo:' : 'Shipping:'; ?></span>
                         <span class="summary-value" style="color: #4CAF50;">
@@ -537,12 +1054,12 @@ if (isset($_SESSION['message'])) {
                     
                     <div class="summary-row">
                         <span class="summary-label"><?php echo $dil == 'tr' ? 'KDV (%18):' : 'VAT (18%):'; ?></span>
-                        <span class="summary-value"><?php echo number_format($toplam_tutar * 0.18, 2); ?> TL</span>
+                        <span class="summary-value"><?php echo number_format($kdv_tutari, 2); ?> TL</span>
                     </div>
                     
                     <div class="summary-row total-row">
-                        <span><?php echo $dil == 'tr' ? 'Toplam:' : 'Total:'; ?></span>
-                        <span><?php echo number_format($toplam_tutar * 1.18, 2); ?> TL</span>
+                        <span><?php echo $dil == 'tr' ? 'GENEL TOPLAM:' : 'GRAND TOTAL:'; ?></span>
+                        <span><?php echo number_format($genel_toplam, 2); ?> TL</span>
                     </div>
                     
                     <?php if ($toplam_adet > 0): ?>
@@ -580,6 +1097,13 @@ if (isset($_SESSION['message'])) {
                             <i class="fas fa-truck" style="color: #2196f3;"></i>
                             <?php echo $dil == 'tr' ? '2-3 iş günü içinde teslimat' : 'Delivery within 2-3 business days'; ?>
                         </p>
+                        <?php if ($is_logged_in): ?>
+                            <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                                <i class="fas fa-star" style="color: #FFD700;"></i>
+                                <?php echo $dil == 'tr' ? 'Bu siparişte kazanılacak puan:' : 'Points to earn from this order:'; ?>
+                                <strong style="color: #ff6b9d;"><?php echo floor($genel_toplam / 10); ?> puan</strong>
+                            </p>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

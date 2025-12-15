@@ -21,7 +21,20 @@ if (empty($_SESSION['sepet'])) {
     exit();
 }
 
-// Toplam hesapla
+// KUPON İPTAL İŞLEMİ
+if (isset($_GET['kupon_iptal']) && $_GET['kupon_iptal'] == '1') {
+    if (isset($_SESSION['uygulanan_kupon'])) {
+        $iptal_kod = $_SESSION['uygulanan_kupon']['kod'] ?? '';
+        unset($_SESSION['uygulanan_kupon']);
+        $_SESSION['message'] = 'Kupon iptal edildi: ' . $iptal_kod;
+        $_SESSION['message_type'] = 'info';
+    }
+    header('Location: odeme.php');
+    ob_end_flush();
+    exit();
+}
+
+// Sepet toplamını hesapla (SEPET.PHP ile AYNI ŞEKİLDE)
 $toplam_tutar = 0;
 $toplam_adet = 0;
 $sepet_urunler = [];
@@ -33,7 +46,7 @@ foreach ($_SESSION['sepet'] as $urun) {
     $toplam_adet += $adet;
     
     $sepet_urunler[] = [
-        'id' => $urun['id'],
+        'id' => $urun['id'] ?? '',
         'ad' => $urun['ad'] ?? 'Ürün',
         'fiyat' => $fiyat,
         'adet' => $adet,
@@ -42,8 +55,53 @@ foreach ($_SESSION['sepet'] as $urun) {
     ];
 }
 
-$kdv = $toplam_tutar * 0.18;
-$genel_toplam = $toplam_tutar * 1.18;
+// KDV HESAPLA (SEPET.PHP ile AYNI)
+$kdv_orani = 0.18; // %18 KDV
+$kdv_tutari = $toplam_tutar * $kdv_orani;
+$genel_toplam_kdvsiz = $toplam_tutar;
+
+// Kupon kontrolü
+$kupon_indirimi = 0;
+$kupon_kod = '';
+$kupon_aciklama = '';
+$kupon_min_sepet = 0;
+
+if (isset($_SESSION['uygulanan_kupon']) && is_array($_SESSION['uygulanan_kupon'])) {
+    $uygulanan_kupon = $_SESSION['uygulanan_kupon'];
+    $kupon_indirimi = floatval($uygulanan_kupon['indirim'] ?? 0);
+    $kupon_kod = $uygulanan_kupon['kod'] ?? '';
+    $kupon_aciklama = $uygulanan_kupon['aciklama'] ?? '';
+    $kupon_min_sepet = floatval($uygulanan_kupon['min_sepet'] ?? 0);
+    
+    // Kupon minimum sepet kontrolü
+    if ($toplam_tutar < $kupon_min_sepet) {
+        // Sepet kuponun minimum tutarını karşılamıyorsa kuponu iptal et
+        unset($_SESSION['uygulanan_kupon']);
+        $_SESSION['message'] = 'Kuponunuzun geçerliliği için sepet tutarınız ' . number_format($kupon_min_sepet, 2) . ' TL üzerinde olmalıdır.';
+        $_SESSION['message_type'] = 'error';
+        header('Location: sepet.php');
+        ob_end_flush();
+        exit();
+    }
+}
+
+// **ÖNEMLİ DEĞİŞİKLİK:**
+// Kupon indirimini KDV DAHİL GENEL TOPLAMDAN düş
+// Bu sayede sepet.php ve odeme.php'deki genel toplamlar aynı olacak
+
+// İndirimli genel toplamı hesapla
+$genel_toplam_kdvli = $genel_toplam_kdvsiz + $kdv_tutari; // KDV dahil toplam
+$indirimli_genel_toplam = $genel_toplam_kdvli - $kupon_indirimi;
+
+// İndirimin ne kadar olduğunu KDV'ye dağıt (gösterim için)
+if ($kupon_indirimi > 0) {
+    // İndirimin KDV oranına göre dağılımını hesapla (sadece gösterim için)
+    $indirim_kdv_orani = $kupon_indirimi * ($kdv_tutari / $genel_toplam_kdvli);
+    $indirim_kdvsiz = $kupon_indirimi - $indirim_kdv_orani;
+} else {
+    $indirim_kdv_orani = 0;
+    $indirim_kdvsiz = 0;
+}
 
 // Siparişler JSON dosyası
 $siparisler_dosya = 'siparisler.json';
@@ -63,6 +121,29 @@ if (isset($_POST['odeme_yap'])) {
         // Sipariş numarası oluştur
         $siparis_no = 'SIP' . date('Ymd') . rand(1000, 9999);
         
+        // Kupon bilgilerini hazırla
+        $kupon_bilgisi = null;
+        if ($kupon_indirimi > 0) {
+            $kupon_bilgisi = [
+                'kupon_kodu' => $kupon_kod,
+                'kupon_aciklama' => $kupon_aciklama,
+                'indirim' => $kupon_indirimi,
+                'min_sepet' => $kupon_min_sepet
+            ];
+            
+            // Kuponu kullanıldı olarak işaretle (session'daki kuponlar listesinde)
+            if (isset($_SESSION['kullanici_kuponlari']) && is_array($_SESSION['kullanici_kuponlari'])) {
+                foreach ($_SESSION['kullanici_kuponlari'] as &$kupon) {
+                    if (isset($kupon['kod']) && $kupon['kod'] == $kupon_kod) {
+                        $kupon['durum'] = 'kullanildi';
+                        $kupon['kullanildi'] = true;
+                        $kupon['kullanma_tarihi'] = date('Y-m-d H:i:s');
+                        break;
+                    }
+                }
+            }
+        }
+        
         // Yeni sipariş
         $yeni_siparis = [
             'siparis_no' => $siparis_no,
@@ -72,8 +153,10 @@ if (isset($_POST['odeme_yap'])) {
             'tarih' => date('d.m.Y H:i:s'),
             'urunler' => $sepet_urunler,
             'toplam_tutar' => $toplam_tutar,
-            'kdv' => $kdv,
-            'genel_toplam' => $genel_toplam,
+            'kdv_tutari' => $kdv_tutari,
+            'kupon_indirimi' => $kupon_indirimi,
+            'kupon_bilgisi' => $kupon_bilgisi,
+            'genel_toplam' => $indirimli_genel_toplam, // İndirimli genel toplam
             'teslimat_adresi' => $teslimat_adresi,
             'kart_son_dort' => substr(str_replace(' ', '', $kart_no), -4),
             'durum' => 'onay_bekliyor',
@@ -105,9 +188,18 @@ if (isset($_POST['odeme_yap'])) {
             // Sepeti temizle
             $_SESSION['sepet'] = [];
             
+            // Kuponu temizle
+            if (isset($_SESSION['uygulanan_kupon'])) {
+                unset($_SESSION['uygulanan_kupon']);
+            }
+            
             // Sipariş bilgisini session'a kaydet
             $_SESSION['son_siparis_no'] = $siparis_no;
             $_SESSION['son_siparis_tarih'] = date('d.m.Y H:i:s');
+            
+            // Başarı mesajı
+            $_SESSION['message'] = 'Siparişiniz başarıyla oluşturuldu! Sipariş numaranız: ' . $siparis_no;
+            $_SESSION['message_type'] = 'success';
             
             // Sipariş takip sayfasına yönlendir
             header('Location: siparis_takip.php?siparis_no=' . $siparis_no);
@@ -219,6 +311,11 @@ if (isset($_POST['odeme_yap'])) {
         border-bottom: 1px solid #ffeef2;
     }
     
+    .summary-item.indirim {
+        color: #4CAF50;
+        font-weight: 600;
+    }
+    
     .summary-total {
         font-size: 1.3rem;
         font-weight: 700;
@@ -260,6 +357,7 @@ if (isset($_POST['odeme_yap'])) {
     
     .cart-items {
         margin-top: 20px;
+        margin-bottom: 30px;
     }
     
     .cart-item {
@@ -268,6 +366,10 @@ if (isset($_POST['odeme_yap'])) {
         align-items: center;
         padding: 10px 0;
         border-bottom: 1px solid #ffeef2;
+    }
+    
+    .cart-item:last-child {
+        border-bottom: none;
     }
     
     .cart-item-info {
@@ -280,13 +382,48 @@ if (isset($_POST['odeme_yap'])) {
         font-size: 1.5rem;
     }
     
-    .success-message {
-        background: #d4edda;
-        color: #155724;
-        padding: 15px;
+    /* KUPON BİLGİSİ STİLLERİ */
+    .kupon-bilgi {
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 15px 20px;
         border-radius: 10px;
         margin-bottom: 20px;
-        border-left: 4px solid #28a745;
+        border-left: 4px solid #4CAF50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .kupon-iptal-btn {
+        background: none;
+        border: none;
+        color: #f44336;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 50%;
+        transition: all 0.3s;
+    }
+    
+    .kupon-iptal-btn:hover {
+        background: rgba(244, 67, 54, 0.1);
+    }
+    
+    .teslimat-notlari {
+        margin-top: 30px;
+        padding: 15px;
+        background: #f9f9f9;
+        border-radius: 10px;
+    }
+    
+    .price-breakdown {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+        font-size: 0.9rem;
+        color: #666;
     }
 </style>
 
@@ -301,6 +438,25 @@ if (isset($_POST['odeme_yap'])) {
             <div class="message <?php echo $_SESSION['message_type']; ?>">
                 <?php echo $_SESSION['message']; ?>
                 <?php unset($_SESSION['message']); unset($_SESSION['message_type']); ?>
+            </div>
+        <?php endif; ?>
+        
+        <!-- KUPON BİLGİSİ -->
+        <?php if ($kupon_indirimi > 0): ?>
+            <div class="kupon-bilgi">
+                <div>
+                    <strong><i class="fas fa-tag"></i> Kupon Uygulandı!</strong>
+                    <p style="margin: 5px 0 0 0; font-size: 0.9rem;">
+                        <strong><?php echo $kupon_kod; ?></strong> - <?php echo $kupon_aciklama; ?>
+                        <br>
+                        <span style="color: #4CAF50; font-weight: bold;">
+                            <?php echo number_format($kupon_indirimi, 2); ?> TL indirim uygulandı!
+                        </span>
+                    </p>
+                </div>
+                <a href="odeme.php?kupon_iptal=1" class="kupon-iptal-btn" title="Kuponu iptal et">
+                    <i class="fas fa-times"></i>
+                </a>
             </div>
         <?php endif; ?>
         
@@ -374,7 +530,9 @@ if (isset($_POST['odeme_yap'])) {
                                 <span class="cart-item-simge"><?php echo $urun_simge; ?></span>
                                 <div>
                                     <div style="font-weight: 500;"><?php echo $urun_ad; ?></div>
-                                    <div style="font-size: 0.9rem; color: #666;"><?php echo $adet; ?> adet</div>
+                                    <div style="font-size: 0.9rem; color: #666;">
+                                        <?php echo $adet; ?> adet × <?php echo number_format($fiyat, 2); ?> TL
+                                    </div>
                                 </div>
                             </div>
                             <span style="font-weight: 600;"><?php echo number_format($toplam, 2); ?> TL</span>
@@ -382,36 +540,90 @@ if (isset($_POST['odeme_yap'])) {
                     <?php endforeach; ?>
                 </div>
                 
-                <div class="summary-item">
-                    <span>Ara Toplam:</span>
-                    <span><?php echo number_format($toplam_tutar, 2); ?> TL</span>
+                <!-- HESAP DETAYLARI -->
+                <div>
+                    <div class="summary-item">
+                        <span>Ara Toplam:</span>
+                        <span><?php echo number_format($toplam_tutar, 2); ?> TL</span>
+                    </div>
+                    
+                    <div class="summary-item">
+                        <span>KDV (%18):</span>
+                        <span><?php echo number_format($kdv_tutari, 2); ?> TL</span>
+                    </div>
+                    
+                    <?php if ($kupon_indirimi > 0): ?>
+                        <div class="summary-item indirim">
+                            <span>Kupon İndirimi (<?php echo $kupon_kod; ?>):</span>
+                            <span>-<?php echo number_format($kupon_indirimi, 2); ?> TL</span>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <div class="summary-item">
+                        <span>Kargo:</span>
+                        <span style="color: #4CAF50; font-weight: 600;">ÜCRETSİZ</span>
+                    </div>
+                    
+                    <div class="summary-total summary-item">
+                        <span>GENEL TOPLAM:</span>
+                        <span>
+                            <?php 
+                            if ($kupon_indirimi > 0) {
+                                echo '<span style="text-decoration: line-through; color: #999; margin-right: 10px;">';
+                                echo number_format($genel_toplam_kdvli, 2);
+                                echo ' TL</span>';
+                            }
+                            ?>
+                            <span style="color: #ff6b9d;">
+                                <?php echo number_format($indirimli_genel_toplam, 2); ?> TL
+                            </span>
+                        </span>
+                    </div>
                 </div>
                 
-                <div class="summary-item">
-                    <span>Kargo:</span>
-                    <span style="color: #4CAF50; font-weight: 600;">ÜCRETSİZ</span>
-                </div>
+                <!-- FİYAT DETAYI -->
+                <?php if ($kupon_indirimi > 0): ?>
+                    <div class="price-breakdown">
+                        <p style="margin-bottom: 10px;"><strong>Fiyat Detayı:</strong></p>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>KDV Dahil Toplam:</span>
+                            <span><?php echo number_format($genel_toplam_kdvli, 2); ?> TL</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>Kupon İndirimi:</span>
+                            <span style="color: #4CAF50;">-<?php echo number_format($kupon_indirimi, 2); ?> TL</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; border-top: 1px solid #ddd; padding-top: 5px;">
+                            <span>Ödenecek Tutar:</span>
+                            <span style="color: #ff6b9d;"><?php echo number_format($indirimli_genel_toplam, 2); ?> TL</span>
+                        </div>
+                    </div>
+                <?php endif; ?>
                 
-                <div class="summary-item">
-                    <span>KDV (%18):</span>
-                    <span><?php echo number_format($kdv, 2); ?> TL</span>
-                </div>
-                
-                <div class="summary-total summary-item">
-                    <span>GENEL TOPLAM:</span>
-                    <span><?php echo number_format($genel_toplam, 2); ?> TL</span>
-                </div>
-                
-                <div style="margin-top: 30px; padding: 15px; background: #f9f9f9; border-radius: 10px;">
+                <!-- TESLİMAT NOTLARI -->
+                <div class="teslimat-notlari">
                     <p style="color: #666; margin-bottom: 10px;">
                         <i class="fas fa-box"></i> 
                         <strong>Teslimat:</strong> 2-3 iş günü içinde
                     </p>
-                    <p style="color: #666;">
+                    <p style="color: #666; margin-bottom: 10px;">
                         <i class="fas fa-gift"></i> 
                         <strong>Hediye Paketi:</strong> Ücretsiz hediye paketleme
                     </p>
+                    <p style="color: #666;">
+                        <i class="fas fa-undo"></i> 
+                        <strong>İade:</strong> 14 gün içinde ücretsiz iade
+                    </p>
                 </div>
+                
+                <!-- KUPON EKLEME LİNKİ -->
+                <?php if ($kupon_indirimi == 0): ?>
+                    <div style="margin-top: 20px; text-align: center;">
+                        <a href="kuponlar.php" style="color: #ff6b9d; text-decoration: none; font-weight: 600;">
+                            <i class="fas fa-tag"></i> Kuponunuz mu var? Kupon eklemek için tıklayın
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
