@@ -1,42 +1,47 @@
 <?php
-// auth.php - DÜZENLENMİŞ (HEADER OLMADAN)
-// Sadece gerekli session başlatma
+// auth.php - DÜZENLENMİŞ VERSİYON (SEPET KORUMA ÖZELLİKLİ)
 
-// SESSION BAŞLATMA
+// 1. SESSION BAŞLATMA
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Dil ve tema değişkenlerini ayarla
+// 2. MISAFİR SEPETİNİ KORUMAK İÇİN (girişten önce)
+// Eğer kullanıcı giriş yapacaksa ve misafir sepeti yoksa, mevcut sepeti misafir sepetine kaydet
+if (!isset($_SESSION['user_id']) && !isset($_SESSION['misafir_sepeti']) && isset($_SESSION['sepet']) && !empty($_SESSION['sepet'])) {
+    $_SESSION['misafir_sepeti'] = $_SESSION['sepet'];
+}
+
+// 3. Dil ve tema değişkenlerini ayarla
 $dil = isset($_COOKIE['dil']) ? $_COOKIE['dil'] : 'tr';
 $tema = isset($_COOKIE['tema']) ? $_COOKIE['tema'] : 'light';
 
-// Admin sabit bilgileri
+// 4. Admin sabit bilgileri
 define('ADMIN_EMAIL', 'tozarhiranur@gmail.com');
 define('ADMIN_PASSWORD', '123456');
 
-// JSON dosyasını kontrol et
+// 5. JSON dosyasını kontrol et
 $users_file = 'users.json';
 if (!file_exists($users_file)) {
     file_put_contents($users_file, json_encode([]));
 }
 
-// Giriş kontrol fonksiyonu
+// 6. Giriş kontrol fonksiyonu
 function isLoggedIn() {
     return isset($_SESSION['user_id']) || (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true);
 }
 
-// Eğer giriş yapmışsa anasayfaya yönlendir
+// 7. Eğer giriş yapmışsa anasayfaya yönlendir
 if (isLoggedIn() && !isset($_GET['action'])) {
     header('Location: anasayfa.php');
     exit;
 }
 
-// Hangi giriş türü
+// 8. Hangi giriş türü
 $login_type = isset($_GET['type']) && $_GET['type'] == 'admin' ? 'admin' : 'normal';
 $is_register = isset($_GET['form']) && $_GET['form'] == 'kayit';
 
-// Dil metinleri
+// 9. Dil metinleri
 $text_selected = [
     'giris' => $dil == 'tr' ? 'Giriş Yap' : 'Login',
     'uye_ol' => $dil == 'tr' ? 'Üye Ol' : 'Register',
@@ -47,12 +52,12 @@ $text_selected = [
     'adres' => $dil == 'tr' ? 'Adres' : 'Address'
 ];
 
-// Mesaj fonksiyonu
+// 10. Mesaj fonksiyonu
 function setMessage($type, $text) {
     $_SESSION['auth_message'] = ['type' => $type, 'text' => $text];
 }
 
-// KULLANICI KONTROL FONKSİYONLARI
+// 11. KULLANICI KONTROL FONKSİYONLARI
 function getUserByEmail($email) {
     global $users_file;
     if (!file_exists($users_file)) {
@@ -76,7 +81,7 @@ function checkUserExists($email) {
     return getUserByEmail($email) !== null;
 }
 
-// ŞİFRE DOĞRULAMA FONKSİYONU
+// 12. ŞİFRE DOĞRULAMA FONKSİYONU
 function verifyPassword($input_password, $stored_password) {
     // Eğer stored_password hash'li ise
     if (password_verify($input_password, $stored_password)) {
@@ -91,13 +96,47 @@ function verifyPassword($input_password, $stored_password) {
     return false;
 }
 
-// NORMAL GİRİŞ
+// 13. SEPET BİRLEŞTİRME FONKSİYONU
+function mergeShoppingCart($user_sepet, $guest_sepet) {
+    if (empty($guest_sepet)) {
+        return $user_sepet;
+    }
+    
+    if (empty($user_sepet)) {
+        return $guest_sepet;
+    }
+    
+    $merged_cart = $user_sepet;
+    
+    foreach ($guest_sepet as $guest_item) {
+        $item_found = false;
+        
+        foreach ($merged_cart as &$user_item) {
+            if (isset($user_item['id']) && isset($guest_item['id']) && $user_item['id'] == $guest_item['id']) {
+                // Aynı ürün varsa adetleri topla
+                $user_adet = isset($user_item['adet']) ? intval($user_item['adet']) : 1;
+                $guest_adet = isset($guest_item['adet']) ? intval($guest_item['adet']) : 1;
+                $user_item['adet'] = $user_adet + $guest_adet;
+                $item_found = true;
+                break;
+            }
+        }
+        
+        if (!$item_found) {
+            $merged_cart[] = $guest_item;
+        }
+    }
+    
+    return $merged_cart;
+}
+
+// 14. NORMAL GİRİŞ - SEPET BİRLEŞTİRMELİ
 if (isset($_POST['action']) && $_POST['action'] == 'giris_normal') {
     $email = strtolower(trim($_POST['email'] ?? ''));
     $sifre = $_POST['sifre'] ?? '';
     
     if (empty($email) || empty($sifre)) {
-        setMessage('error', 'Email ve şifre gereklidir!');
+        setMessage('error', $dil == 'tr' ? 'Email ve şifre gereklidir!' : 'Email and password are required!');
         header('Location: auth.php');
         exit;
     }
@@ -106,17 +145,26 @@ if (isset($_POST['action']) && $_POST['action'] == 'giris_normal') {
     $user = getUserByEmail($email);
     
     if (!$user) {
-        setMessage('error', 'Bu email ile kayıtlı kullanıcı bulunamadı!');
+        setMessage('error', $dil == 'tr' ? 'Bu email ile kayıtlı kullanıcı bulunamadı!' : 'No user found with this email!');
         header('Location: auth.php');
         exit;
     }
     
     // Şifre kontrolü
     if (!verifyPassword($sifre, $user['sifre'])) {
-        setMessage('error', 'Hatalı şifre!');
+        setMessage('error', $dil == 'tr' ? 'Hatalı şifre!' : 'Wrong password!');
         header('Location: auth.php');
         exit;
     }
+    
+    // MISAFİR SEPETİNİ AL
+    $misafir_sepeti = isset($_SESSION['misafir_sepeti']) ? $_SESSION['misafir_sepeti'] : [];
+    
+    // KULLANICI SE PETİNİ AL (eğer daha önceden varsa)
+    $kullanici_sepeti = isset($_SESSION['sepet']) ? $_SESSION['sepet'] : [];
+    
+    // SEPETLERİ BİRLEŞTİR
+    $birlesik_sepet = mergeShoppingCart($kullanici_sepeti, $misafir_sepeti);
     
     // Giriş başarılı
     $_SESSION['user_id'] = $user['id'];
@@ -124,18 +172,44 @@ if (isset($_POST['action']) && $_POST['action'] == 'giris_normal') {
     $_SESSION['email'] = $user['email'];
     $_SESSION['puan'] = $user['puan'] ?? 0;
     
-    setMessage('success', 'Başarıyla giriş yaptınız!');
+    // BİRLEŞTİRİLMİŞ SEPETİ KAYDET
+    $_SESSION['sepet'] = $birlesik_sepet;
+    
+    // MISAFİR SEPETİNİ TEMİZLE (artık gerek yok)
+    unset($_SESSION['misafir_sepeti']);
+    
+    // Mesajı ayarla (sepet birleşme bilgisiyle)
+    if (!empty($misafir_sepeti)) {
+        $toplam_urun = 0;
+        foreach ($misafir_sepeti as $urun) {
+            $adet = isset($urun['adet']) ? intval($urun['adet']) : 1;
+            $toplam_urun += $adet;
+        }
+        
+        setMessage('success', 
+            $dil == 'tr' 
+            ? "Başarıyla giriş yaptınız! Misafir sepetinizdeki $toplam_urun ürün hesabınıza aktarıldı." 
+            : "Login successful! $toplam_urun items from your guest cart have been transferred to your account."
+        );
+    } else {
+        setMessage('success', 
+            $dil == 'tr' 
+            ? 'Başarıyla giriş yaptınız!' 
+            : 'Login successful!'
+        );
+    }
+    
     header('Location: anasayfa.php');
     exit;
 }
 
-// ADMIN GİRİŞ
+// 15. ADMIN GİRİŞ
 if (isset($_POST['action']) && $_POST['action'] == 'giris_admin') {
     $email = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
     
     if (empty($email) || empty($password)) {
-        setMessage('error', 'Email ve şifre gereklidir!');
+        setMessage('error', $dil == 'tr' ? 'Email ve şifre gereklidir!' : 'Email and password are required!');
         header('Location: auth.php?type=admin');
         exit;
     }
@@ -145,17 +219,17 @@ if (isset($_POST['action']) && $_POST['action'] == 'giris_admin') {
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['admin_email'] = $email;
         
-        setMessage('success', 'Admin olarak başarıyla giriş yapıldı!');
+        setMessage('success', $dil == 'tr' ? 'Admin olarak başarıyla giriş yapıldı!' : 'Logged in as admin successfully!');
         header('Location: anasayfa.php');
         exit;
     } else {
-        setMessage('error', 'Hatalı admin bilgileri!');
+        setMessage('error', $dil == 'tr' ? 'Hatalı admin bilgileri!' : 'Wrong admin credentials!');
         header('Location: auth.php?type=admin');
         exit;
     }
 }
 
-// KAYIT İŞLEMİ (ÜYE OL)
+// 16. KAYIT İŞLEMİ (ÜYE OL) - SEPET BİRLEŞTİRMELİ
 if (isset($_POST['action']) && $_POST['action'] == 'kayit') {
     $ad_soyad = trim($_POST['ad_soyad'] ?? '');
     $email = strtolower(trim($_POST['email'] ?? ''));
@@ -163,31 +237,34 @@ if (isset($_POST['action']) && $_POST['action'] == 'kayit') {
     $telefon = trim($_POST['telefon'] ?? '');
     
     if (empty($ad_soyad) || empty($email) || empty($sifre) || empty($telefon)) {
-        setMessage('error', 'Tüm alanları doldurun!');
+        setMessage('error', $dil == 'tr' ? 'Tüm alanları doldurun!' : 'Please fill all fields!');
         header('Location: auth.php?form=kayit');
         exit;
     }
     
     // Email format kontrolü
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        setMessage('error', 'Geçerli bir email adresi girin!');
+        setMessage('error', $dil == 'tr' ? 'Geçerli bir email adresi girin!' : 'Please enter a valid email address!');
         header('Location: auth.php?form=kayit');
         exit;
     }
     
     // Şifre uzunluk kontrolü
     if (strlen($sifre) < 6) {
-        setMessage('error', 'Şifre en az 6 karakter olmalıdır!');
+        setMessage('error', $dil == 'tr' ? 'Şifre en az 6 karakter olmalıdır!' : 'Password must be at least 6 characters!');
         header('Location: auth.php?form=kayit');
         exit;
     }
     
     // Email kontrolü
     if (checkUserExists($email)) {
-        setMessage('error', 'Bu email zaten kayıtlı! Lütfen giriş yapın.');
+        setMessage('error', $dil == 'tr' ? 'Bu email zaten kayıtlı! Lütfen giriş yapın.' : 'This email is already registered! Please login.');
         header('Location: auth.php');
         exit;
     }
+    
+    // MISAFİR SEPETİNİ AL
+    $misafir_sepeti = isset($_SESSION['misafir_sepeti']) ? $_SESSION['misafir_sepeti'] : [];
     
     $users = [];
     if (file_exists($users_file)) {
@@ -217,20 +294,56 @@ if (isset($_POST['action']) && $_POST['action'] == 'kayit') {
     $_SESSION['email'] = $new_user['email'];
     $_SESSION['puan'] = 100;
     
-    setMessage('success', 'Başarıyla kayıt oldunuz! 100 hoş geldin puanı kazandınız.');
+    // MISAFİR SEPETİNİ KULLANICI SE PETİNE AKTAR
+    $_SESSION['sepet'] = $misafir_sepeti;
+    
+    // MISAFİR SEPETİNİ TEMİZLE
+    unset($_SESSION['misafir_sepeti']);
+    
+    // Mesajı ayarla (sepet aktarma bilgisiyle)
+    if (!empty($misafir_sepeti)) {
+        $toplam_urun = 0;
+        foreach ($misafir_sepeti as $urun) {
+            $adet = isset($urun['adet']) ? intval($urun['adet']) : 1;
+            $toplam_urun += $adet;
+        }
+        
+        setMessage('success', 
+            $dil == 'tr' 
+            ? "Başarıyla kayıt oldunuz! 100 hoş geldin puanı kazandınız. Misafir sepetinizdeki $toplam_urun ürün hesabınıza aktarıldı." 
+            : "Registration successful! You earned 100 welcome points. $toplam_urun items from your guest cart have been transferred to your account."
+        );
+    } else {
+        setMessage('success', 
+            $dil == 'tr' 
+            ? 'Başarıyla kayıt oldunuz! 100 hoş geldin puanı kazandınız.' 
+            : 'Registration successful! You earned 100 welcome points.'
+        );
+    }
+    
     header('Location: anasayfa.php');
     exit;
 }
 
-// ÇIKIŞ
+// 17. ÇIKIŞ - SEPETİ MISAFİR SEPETİNE KAYDET
 if (isset($_GET['action']) && $_GET['action'] == 'cikis') {
+    // Çıkış yapmadan önce sepeti misafir sepetine kaydet
+    if (isset($_SESSION['sepet']) && !empty($_SESSION['sepet'])) {
+        $_SESSION['misafir_sepeti'] = $_SESSION['sepet'];
+    }
+    
+    // Tüm session verilerini temizle
     session_destroy();
-    setMessage('success', 'Başarıyla çıkış yaptınız!');
+    
+    // Yeni session başlat ve mesajı kaydet
+    session_start();
+    setMessage('success', $dil == 'tr' ? 'Başarıyla çıkış yaptınız! Sepetiniz korundu.' : 'Logged out successfully! Your cart has been saved.');
+    
     header('Location: anasayfa.php');
     exit;
 }
 
-// Mesajları al
+// 18. Mesajları al
 $message = '';
 $message_type = '';
 if (isset($_SESSION['auth_message'])) {
@@ -364,6 +477,7 @@ if (isset($_SESSION['auth_message'])) {
             text-align: center;
             animation: slideIn 0.3s ease-out;
             font-size: 14px;
+            line-height: 1.5;
         }
         
         .message.success {
@@ -552,6 +666,27 @@ if (isset($_SESSION['auth_message'])) {
             margin-right: 8px;
         }
         
+        /* SEPET KORUMA BİLDİRİMİ */
+        .cart-notice {
+            background: #e3f2fd;
+            border: 1px solid #64b5f6;
+            border-radius: 8px;
+            padding: 12px 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #1565c0;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .cart-notice.hidden {
+            display: none;
+        }
+        
         /* FOOTER */
         .auth-footer {
             text-align: center;
@@ -650,7 +785,27 @@ if (isset($_SESSION['auth_message'])) {
         <div class="auth-content">
             <?php if($message): ?>
                 <div class="message <?php echo $message_type; ?>">
-                    <?php echo $message; ?>
+                    <?php echo htmlspecialchars($message); ?>
+                </div>
+            <?php endif; ?>
+            
+            <!-- SEPET KORUMA BİLDİRİMİ -->
+            <?php if(isset($_SESSION['misafir_sepeti']) && !empty($_SESSION['misafir_sepeti']) && $login_type != 'admin'): ?>
+                <?php 
+                $toplam_urun = 0;
+                foreach ($_SESSION['misafir_sepeti'] as $urun) {
+                    $adet = isset($urun['adet']) ? intval($urun['adet']) : 1;
+                    $toplam_urun += $adet;
+                }
+                ?>
+                <div class="cart-notice" id="cartNotice">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>
+                        <?php echo $dil == 'tr' 
+                            ? "Sepetinizde $toplam_urun ürün var. Giriş yapınca sepetiniz hesabınıza aktarılacak."
+                            : "You have $toplam_urun items in your cart. They will be transferred to your account when you login.";
+                        ?>
+                    </span>
                 </div>
             <?php endif; ?>
             
@@ -680,14 +835,15 @@ if (isset($_SESSION['auth_message'])) {
                     
                     <div class="form-links">
                         <a href="auth.php" class="form-link">
-                            <i class="fas fa-arrow-left"></i> Kullanıcı Girişine Dön
+                            <i class="fas fa-arrow-left"></i> 
+                            <?php echo $dil == 'tr' ? 'Kullanıcı Girişine Dön' : 'Back to User Login'; ?>
                         </a>
                     </div>
                 </form>
                 
                 <div class="admin-note">
                     <i class="fas fa-exclamation-triangle"></i>
-                    Sadece yetkili admin personel girebilir
+                    <?php echo $dil == 'tr' ? 'Sadece yetkili admin personel girebilir' : 'Only authorized admin personnel can access'; ?>
                 </div>
                 
             <?php else: ?>
@@ -697,10 +853,10 @@ if (isset($_SESSION['auth_message'])) {
                     <div class="auth-tabs" id="authTabs">
                         <div class="tab-slider" id="tabSlider"></div>
                         <button type="button" class="auth-tab active" data-tab="login" id="loginTab">
-                            Giriş Yap
+                            <?php echo $text_selected['giris']; ?>
                         </button>
                         <button type="button" class="auth-tab" data-tab="register" id="registerTab">
-                            Üye Ol
+                            <?php echo $text_selected['uye_ol']; ?>
                         </button>
                     </div>
                 <?php endif; ?>
@@ -714,28 +870,33 @@ if (isset($_SESSION['auth_message'])) {
                             
                             <div class="form-group">
                                 <label class="form-label">
-                                    <i class="fas fa-envelope"></i> E-posta
+                                    <i class="fas fa-envelope"></i> <?php echo $text_selected['email']; ?>
                                 </label>
-                                <input type="email" name="email" class="form-input" placeholder="ornek@email.com" required>
+                                <input type="email" name="email" class="form-input" 
+                                       placeholder="<?php echo $dil == 'tr' ? 'ornek@email.com' : 'example@email.com'; ?>" 
+                                       required>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label">
-                                    <i class="fas fa-lock"></i> Şifre
+                                    <i class="fas fa-lock"></i> <?php echo $text_selected['sifre']; ?>
                                 </label>
-                                <input type="password" name="sifre" class="form-input" placeholder="••••••••" required>
+                                <input type="password" name="sifre" class="form-input" 
+                                       placeholder="••••••••" 
+                                       required>
                             </div>
                             
                             <button type="submit" class="submit-btn">
                                 <i class="fas fa-sign-in-alt"></i>
-                                Giriş Yap
+                                <?php echo $text_selected['giris']; ?>
                             </button>
                         </form>
                         
                         <?php if(!$is_register): ?>
                             <div class="form-links">
                                 <a href="auth.php?type=admin" class="form-link admin-link">
-                                    <i class="fas fa-user-shield"></i> Admin Girişi
+                                    <i class="fas fa-user-shield"></i> 
+                                    <?php echo $dil == 'tr' ? 'Admin Girişi' : 'Admin Login'; ?>
                                 </a>
                             </div>
                         <?php endif; ?>
@@ -748,56 +909,66 @@ if (isset($_SESSION['auth_message'])) {
                             
                             <div class="form-group">
                                 <label class="form-label">
-                                    <i class="fas fa-user"></i> Ad Soyad
+                                    <i class="fas fa-user"></i> <?php echo $text_selected['ad_soyad']; ?>
                                 </label>
-                                <input type="text" name="ad_soyad" class="form-input" placeholder="Adınız Soyadınız" required>
+                                <input type="text" name="ad_soyad" class="form-input" 
+                                       placeholder="<?php echo $dil == 'tr' ? 'Adınız Soyadınız' : 'Your Full Name'; ?>" 
+                                       required>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label">
-                                    <i class="fas fa-envelope"></i> E-posta
+                                    <i class="fas fa-envelope"></i> <?php echo $text_selected['email']; ?>
                                 </label>
-                                <input type="email" name="email" class="form-input" placeholder="ornek@email.com" required>
+                                <input type="email" name="email" class="form-input" 
+                                       placeholder="<?php echo $dil == 'tr' ? 'ornek@email.com' : 'example@email.com'; ?>" 
+                                       required>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label">
-                                    <i class="fas fa-lock"></i> Şifre
+                                    <i class="fas fa-lock"></i> <?php echo $text_selected['sifre']; ?>
                                 </label>
-                                <input type="password" name="sifre" class="form-input" placeholder="En az 6 karakter" required minlength="6">
+                                <input type="password" name="sifre" class="form-input" 
+                                       placeholder="<?php echo $dil == 'tr' ? 'En az 6 karakter' : 'At least 6 characters'; ?>" 
+                                       required minlength="6">
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label">
-                                    <i class="fas fa-phone"></i> Telefon
+                                    <i class="fas fa-phone"></i> <?php echo $text_selected['tel']; ?>
                                 </label>
-                                <input type="tel" name="telefon" class="form-input" placeholder="5xx xxx xx xx" required>
+                                <input type="tel" name="telefon" class="form-input" 
+                                       placeholder="<?php echo $dil == 'tr' ? '5xx xxx xx xx' : 'Phone number'; ?>" 
+                                       required>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label">
-                                    <i class="fas fa-map-marker-alt"></i> Adres
+                                    <i class="fas fa-map-marker-alt"></i> <?php echo $text_selected['adres']; ?>
                                 </label>
-                                <input type="text" name="adres" class="form-input" placeholder="Teslimat adresiniz">
+                                <input type="text" name="adres" class="form-input" 
+                                       placeholder="<?php echo $dil == 'tr' ? 'Teslimat adresiniz' : 'Delivery address'; ?>">
                             </div>
                             
                             <button type="submit" class="submit-btn">
                                 <i class="fas fa-user-plus"></i>
-                                Üye Ol
+                                <?php echo $text_selected['uye_ol']; ?>
                             </button>
                         </form>
                         
                         <?php if(!$is_register): ?>
                             <div class="form-links">
-                                <span>Zaten hesabınız var mı?</span>
+                                <span><?php echo $dil == 'tr' ? 'Zaten hesabınız var mı?' : 'Already have an account?'; ?></span>
                                 <a href="javascript:void(0)" class="form-link" id="goToLoginLink">
-                                    Giriş yapın
+                                    <?php echo $dil == 'tr' ? 'Giriş yapın' : 'Login here'; ?>
                                 </a>
                             </div>
                         <?php else: ?>
                             <div class="form-links">
                                 <a href="auth.php" class="form-link">
-                                    <i class="fas fa-arrow-left"></i> Giriş sayfasına dön
+                                    <i class="fas fa-arrow-left"></i> 
+                                    <?php echo $dil == 'tr' ? 'Giriş sayfasına dön' : 'Back to login page'; ?>
                                 </a>
                             </div>
                         <?php endif; ?>
@@ -807,7 +978,8 @@ if (isset($_SESSION['auth_message'])) {
             
             <!-- FOOTER -->
             <div class="auth-footer">
-                <i class="fas fa-lock"></i> Güvenli bağlantı
+                <i class="fas fa-lock"></i> 
+                <?php echo $dil == 'tr' ? 'Güvenli bağlantı' : 'Secure connection'; ?>
             </div>
         </div>
     </div>
@@ -820,6 +992,7 @@ if (isset($_SESSION['auth_message'])) {
             const loginPage = document.getElementById('loginPage');
             const registerPage = document.getElementById('registerPage');
             const goToLoginLink = document.getElementById('goToLoginLink');
+            const cartNotice = document.getElementById('cartNotice');
             
             // Tab switching for user login/register
             if(loginTab && registerTab) {
@@ -903,6 +1076,13 @@ if (isset($_SESSION['auth_message'])) {
             const firstInput = document.querySelector('.form-input');
             if(firstInput) {
                 firstInput.focus();
+            }
+            
+            // Sepet bildirimini 10 saniye sonra gizle
+            if(cartNotice) {
+                setTimeout(function() {
+                    cartNotice.classList.add('hidden');
+                }, 10000); // 10 saniye
             }
         });
     </script>
