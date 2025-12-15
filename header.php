@@ -155,6 +155,61 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
     
     <!-- PEMBE TASARIM STİLLERİ -->
     <style>
+        /* CSS DEĞİŞKENLERİ - TEMA SİSTEMİ */
+        :root {
+            /* Light theme variables */
+            --primary-color: #ff6b9d;
+            --secondary-color: #ff8fab;
+            --accent-color: #4ecdc4;
+            --text-color: #333;
+            --bg-color: #fff5f7;
+            --bg-secondary: #ffeef2;
+            --card-bg: white;
+            --border-color: #ffeef2;
+            --shadow-color: rgba(255, 107, 157, 0.1);
+            --navbar-gradient: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            --chat-gradient: linear-gradient(135deg, #4ecdc4 0%, #88d3ce 100%);
+            --message-user-bg: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            --message-bot-bg: white;
+            --input-bg: white;
+            --input-border: #ffeef2;
+            --button-text: white;
+            --admin-color: #d32f2f;
+            --success-bg: #e8f5e9;
+            --error-bg: #ffebee;
+            --info-bg: #e3f2fd;
+            --breadcrumb-bg: white;
+            --quick-reply-bg: #f8f9fa;
+            --quick-reply-border: #e9ecef;
+        }
+
+        [data-theme="dark"] {
+            /* Dark theme variables */
+            --primary-color: #ff6b9d;
+            --secondary-color: #ff8fab;
+            --accent-color: #4ecdc4;
+            --text-color: #ffffff;
+            --bg-color: #1a1a2e;
+            --bg-secondary: #16213e;
+            --card-bg: #0f3460;
+            --border-color: #1e3a8a;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --navbar-gradient: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            --chat-gradient: linear-gradient(135deg, #4ecdc4 0%, #88d3ce 100%);
+            --message-user-bg: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            --message-bot-bg: #2d3748;
+            --input-bg: #2d3748;
+            --input-border: #4a5568;
+            --button-text: white;
+            --admin-color: #f44336;
+            --success-bg: #1b5e20;
+            --error-bg: #c62828;
+            --info-bg: #0d47a1;
+            --breadcrumb-bg: #0f3460;
+            --quick-reply-bg: #2d3748;
+            --quick-reply-border: #4a5568;
+        }
+        
         /* TEMEL STİLLER */
         * {
             margin: 0;
@@ -164,18 +219,19 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #fff5f7 0%, #ffeef2 100%);
+            background: var(--bg-color);
             min-height: 100vh;
-            color: #333;
+            color: var(--text-color);
             position: relative;
             overflow-x: hidden;
+            transition: background-color 0.3s, color 0.3s;
         }
         
         /* NAVBAR - PEMBE TASARIM */
         .navbar {
-            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            background: var(--navbar-gradient);
             padding: 15px 0;
-            box-shadow: 0 4px 20px rgba(255, 107, 157, 0.3);
+            box-shadow: 0 4px 20px var(--shadow-color);
             position: sticky;
             top: 0;
             z-index: 1000;
@@ -261,7 +317,7 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         
         .user-points {
             background: white;
-            color: #ff6b9d;
+            color: var(--primary-color);
             padding: 2px 8px;
             border-radius: 10px;
             font-size: 0.8rem;
@@ -269,7 +325,7 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .admin-badge {
-            background: #d32f2f;
+            background: var(--admin-color);
             color: white;
             padding: 2px 8px;
             border-radius: 10px;
@@ -280,7 +336,7 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         /* SAYAÇLAR */
         .sepet-sayaci, .favori-sayaci {
             background: white;
-            color: #ff6b9d;
+            color: var(--primary-color);
             font-size: 0.7rem;
             padding: 2px 6px;
             border-radius: 10px;
@@ -291,7 +347,7 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         /* BUTONLAR */
         .auth-button {
             background: white;
-            color: #ff6b9d;
+            color: var(--primary-color);
             border: none;
             padding: 10px 20px;
             border-radius: 8px;
@@ -310,7 +366,7 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .admin-button {
-            background: #d32f2f;
+            background: var(--admin-color);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -342,7 +398,13 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .dil-secici option {
+            background: white;
             color: #333;
+        }
+        
+        [data-theme="dark"] .dil-secici option {
+            background: #2d3748;
+            color: white;
         }
         
         /* ARAMA ÇUBUĞU */
@@ -353,11 +415,12 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .arama-cubugu {
-            background: white;
+            background: var(--card-bg);
             padding: 20px;
             border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(255, 107, 157, 0.1);
+            box-shadow: 0 5px 20px var(--shadow-color);
             margin-bottom: 20px;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
         
         .arama-wrapper {
@@ -368,32 +431,36 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         
         .kategori-select {
             padding: 12px;
-            border: 2px solid #ffeef2;
+            border: 2px solid var(--input-border);
             border-radius: 10px;
             font-size: 1rem;
-            background: white;
+            background: var(--input-bg);
+            color: var(--text-color);
             cursor: pointer;
             min-width: 220px;
+            transition: background-color 0.3s, border-color 0.3s;
         }
         
         .arama-input {
             flex: 1;
             padding: 12px 20px;
-            border: 2px solid #ffeef2;
+            border: 2px solid var(--input-border);
             border-radius: 10px;
             font-size: 1rem;
+            background: var(--input-bg);
+            color: var(--text-color);
             transition: all 0.3s;
         }
         
         .arama-input:focus {
             outline: none;
-            border-color: #ff6b9d;
+            border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
         }
         
         .arama-buton {
-            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
-            color: white;
+            background: var(--navbar-gradient);
+            color: var(--button-text);
             border: none;
             padding: 12px 25px;
             border-radius: 10px;
@@ -412,13 +479,14 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         .breadcrumb {
             margin: 20px 0;
             padding: 15px;
-            background: white;
+            background: var(--breadcrumb-bg);
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(255, 107, 157, 0.1);
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: background-color 0.3s;
         }
         
         .breadcrumb a {
-            color: #ff6b9d;
+            color: var(--primary-color);
             text-decoration: none;
             font-weight: 500;
         }
@@ -426,6 +494,10 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         .breadcrumb .separator {
             margin: 0 10px;
             color: #999;
+        }
+        
+        [data-theme="dark"] .breadcrumb .separator {
+            color: #ccc;
         }
         
         /* MESAJ KUTUSU */
@@ -439,21 +511,33 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .message.success {
-            background: #e8f5e9;
+            background: var(--success-bg);
             color: #2e7d32;
             border-left-color: #4CAF50;
         }
         
         .message.error {
-            background: #ffebee;
+            background: var(--error-bg);
             color: #c62828;
             border-left-color: #f44336;
         }
         
         .message.info {
-            background: #e3f2fd;
+            background: var(--info-bg);
             color: #1565c0;
             border-left-color: #2196f3;
+        }
+        
+        [data-theme="dark"] .message.success {
+            color: #a5d6a7;
+        }
+        
+        [data-theme="dark"] .message.error {
+            color: #ef9a9a;
+        }
+        
+        [data-theme="dark"] .message.info {
+            color: #90caf9;
         }
         
         /* CHAT WIDGET STİLLERİ */
@@ -469,7 +553,7 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
             width: 70px;
             height: 70px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #4ecdc4 0%, #88d3ce 100%);
+            background: var(--chat-gradient);
             border: none;
             color: white;
             font-size: 28px;
@@ -522,15 +606,15 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
             right: 0;
             width: 380px;
             max-height: 600px;
-            background: white;
+            background: var(--card-bg);
             border-radius: 25px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 20px 60px var(--shadow-color);
             overflow: hidden;
             display: none;
             opacity: 0;
             transform: translateY(20px) scale(0.95);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: 1px solid rgba(255, 107, 157, 0.1);
+            border: 1px solid var(--border-color);
         }
         
         .chat-container.active {
@@ -541,7 +625,7 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .chat-header {
-            background: linear-gradient(135deg, #4ecdc4 0%, #88d3ce 100%);
+            background: var(--chat-gradient);
             color: white;
             padding: 20px;
             display: flex;
@@ -582,7 +666,7 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
             padding: 20px;
             overflow-y: auto;
             max-height: 400px;
-            background: #f8f9fa;
+            background: var(--bg-secondary);
             scroll-behavior: smooth;
         }
         
@@ -591,17 +675,18 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .chat-messages::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: var(--bg-color);
             border-radius: 10px;
         }
         
         .chat-messages::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
+            background: var(--primary-color);
             border-radius: 10px;
+            opacity: 0.5;
         }
         
         .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+            background: var(--secondary-color);
         }
         
         .chat-message {
@@ -616,27 +701,28 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
             max-width: 80%;
             word-wrap: break-word;
             position: relative;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px var(--shadow-color);
         }
         
         .message-user {
-            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            background: var(--message-user-bg);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
         }
         
         .message-bot {
-            background: white;
-            color: #333;
-            border: 1px solid #e9ecef;
+            background: var(--message-bot-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
             align-self: flex-start;
             border-bottom-left-radius: 4px;
         }
         
         .message-sender {
             font-size: 0.8rem;
-            color: #666;
+            color: var(--text-color);
+            opacity: 0.8;
             margin-bottom: 4px;
             margin-left: 5px;
             margin-right: 5px;
@@ -644,7 +730,8 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         
         .message-time {
             font-size: 0.7rem;
-            color: #999;
+            color: var(--text-color);
+            opacity: 0.7;
             text-align: right;
             margin-top: 4px;
             margin-right: 5px;
@@ -652,8 +739,8 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         
         .chat-input-area {
             padding: 20px;
-            border-top: 1px solid #e9ecef;
-            background: white;
+            border-top: 1px solid var(--border-color);
+            background: var(--card-bg);
         }
         
         .chat-input-wrapper {
@@ -664,21 +751,23 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         .chat-input {
             flex: 1;
             padding: 12px 16px;
-            border: 2px solid #e9ecef;
+            border: 2px solid var(--input-border);
             border-radius: 25px;
             font-size: 0.95rem;
             transition: all 0.3s;
             font-family: 'Poppins', sans-serif;
+            background: var(--input-bg);
+            color: var(--text-color);
         }
         
         .chat-input:focus {
             outline: none;
-            border-color: #4ecdc4;
+            border-color: var(--accent-color);
             box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
         }
         
         .chat-send-btn {
-            background: linear-gradient(135deg, #4ecdc4 0%, #88d3ce 100%);
+            background: var(--chat-gradient);
             color: white;
             border: none;
             width: 50px;
@@ -702,13 +791,14 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         
         .quick-replies {
             padding: 15px 20px 0;
-            background: white;
-            border-bottom: 1px solid #e9ecef;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
         }
         
         .quick-replies-title {
             font-size: 0.9rem;
-            color: #666;
+            color: var(--text-color);
+            opacity: 0.8;
             margin-bottom: 8px;
             display: block;
             font-weight: 600;
@@ -721,9 +811,9 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .quick-reply-btn {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            color: #666;
+            background: var(--quick-reply-bg);
+            border: 1px solid var(--quick-reply-border);
+            color: var(--text-color);
             padding: 8px 12px;
             border-radius: 20px;
             font-size: 0.85rem;
@@ -733,10 +823,97 @@ $mevcut_kategori = isset($_GET['kategori']) ? $_GET['kategori'] : '';
         }
         
         .quick-reply-btn:hover {
-            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            background: var(--navbar-gradient);
             color: white;
             border-color: transparent;
             transform: translateY(-2px);
+        }
+        
+        /* MAIN CONTENT STYLES - Tüm sayfalarda uygulanacak */
+        .main-content {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px var(--shadow-color);
+            margin-bottom: 40px;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        
+        /* TABLO STİLLERİ */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            color: var(--text-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px var(--shadow-color);
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+        
+        /* FORM ELEMENTLERİ */
+        input, textarea, select {
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 2px solid var(--input-border);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+        }
+        
+        /* CARD STİLLERİ */
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px var(--shadow-color);
+        }
+        
+        /* BUTON STİLLERİ */
+        .btn {
+            background: var(--navbar-gradient);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 157, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-color);
         }
         
         /* ANİMASYONLAR */
